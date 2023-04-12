@@ -6,6 +6,7 @@ import (
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
 	"database/sql"
+	"errors"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -29,7 +30,7 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 	log.Println("Registered guild (" + g.Name + "#" + g.ID + ")")
 
 	h.createConfigurationIfNotExists(ctx, s, g.Guild.ID)
-	discord.CreateMissingGiveaways(ctx, s, h.ServerRepo, h.GiveawayRepo, g.Guild)
+	h.createMissingGiveaways(ctx, s, g.Guild)
 	h.updateAllMembersSavedRoles(ctx, s, g.Guild.ID)
 	discord.CheckHelpers(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, g.Guild.ID)
 }
@@ -69,5 +70,32 @@ func (h GuildCreateListener) updateAllMembersSavedRoles(ctx context.Context, ses
 	guildMembers := discord.GetAllMembers(session, guildId)
 	for _, member := range guildMembers {
 		h.UserRepo.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)
+	}
+}
+
+func (h GuildCreateListener) createMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
+	if err != nil {
+		log.Printf("(%s) createMissingGiveaways#ServerRepo.GetServerConfigForGuild: %v", guild.ID, err)
+		return
+	}
+	giveawayChannelId := serverConfig.MainChannel
+	_, err = s.Channel(giveawayChannelId)
+	if err != nil {
+		log.Printf("(%s) createMissingGiveaways#Session.Channel: %v", guild.ID, err)
+		return
+	}
+	_, err = h.GiveawayRepo.GetGiveawayForGuild(ctx, guild.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("(%s) createMissingGiveaways#giveawayRepo.GetGiveawayForGuild: %v", guild.ID, err)
+		return
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
+		if err != nil {
+			log.Printf("(%s) createMissingGiveaways#giveawayRepo.InsertGiveaway: %v", guild.ID, err)
+			return
+		}
 	}
 }

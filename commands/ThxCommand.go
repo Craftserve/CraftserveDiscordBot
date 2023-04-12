@@ -4,6 +4,8 @@ import (
 	"csrvbot/internal/repos"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"database/sql"
+	"errors"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -100,7 +102,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		return
 	}
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
-	if err != nil || giveaway == nil {
+	if err != nil {
 		log.Println("("+i.GuildID+") Could not get giveaway", err)
 		return
 	}
@@ -139,14 +141,41 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		return
 	}
 	log.Println("(" + i.GuildID + ") " + author.Username + " has thanked " + selectedUser.Username)
-	discord.NotifyThxOnThxInfoChannel(ctx, s, h.ServerRepo, h.GiveawayRepo, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+	if err != nil {
+		log.Printf("Could not get server config for guild %s", i.GuildID)
+		return
+	}
+
+	thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, response.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("Could not get thx notification for message %s", response.ID)
+		return
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		if err != nil {
+			log.Printf("(%s) Could not notify thx on thx info channel", i.GuildID)
+			return
+		}
+
+		err = h.GiveawayRepo.InsertThxNotification(ctx, response.ID, notificationMessageId)
+		if err != nil {
+			log.Printf("(%s) Could not insert thx notification", i.GuildID)
+			return
+		}
+	} else {
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		if err != nil {
+			log.Printf("(%s) Could not notify thx on thx info channel", i.GuildID)
+			return
+		}
+	}
 
 	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅") {
 	}
 	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔") {
 	}
-}
-
-func (h ThxCommand) HandleContext(s *discordgo.Session, i *discordgo.InteractionCreate) {
-
 }

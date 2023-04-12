@@ -6,6 +6,8 @@ import (
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"database/sql"
+	"errors"
 	"github.com/bwmarrin/discordgo"
 	"log"
 	"strconv"
@@ -223,7 +225,12 @@ func (h CsrvbotCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCre
 		log.Println("("+i.GuildID+") "+"handleGiveawayReactions#s.GuildMember", err)
 		return
 	}
-	if !discord.HasAdminPermissions(ctx, s, h.ServerRepo, member, i.GuildID) {
+	adminRole, err := h.ServerRepo.GetAdminRoleForGuild(ctx, i.GuildID)
+	if err != nil {
+		log.Printf("(%s) Could not get admin role for guild: %s", i.GuildID, err)
+	}
+
+	if !discord.HasAdminPermissions(s, member, adminRole, i.GuildID) {
 		discord.RespondWithMessage(s, i, "Nie masz uprawnień do tej komendy")
 		return
 	}
@@ -274,7 +281,7 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 	discord.FinishGiveaway(ctx, s, h.ServerRepo, h.GiveawayRepo, h.CsrvClient, guild.ID)
 	discord.RespondWithMessage(s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
 
-	discord.CreateMissingGiveaways(ctx, s, h.ServerRepo, h.GiveawayRepo, guild)
+	h.createMissingGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -290,9 +297,9 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 	}
 	selectedUser := i.ApplicationCommandData().Options[0].Options[0].UserValue(s)
 	discord.RespondWithMessage(s, i, "Podjęto próbę usunięcia użytkownika z giveawayu")
-	err = h.GiveawayRepo.RemoveParticipants(ctx, giveaway.Id, selectedUser.ID)
+	err = h.GiveawayRepo.RemoveAllParticipantEntries(ctx, giveaway.Id, selectedUser.ID)
 	if err != nil {
-		log.Println("handleDelete h.GiveawayRepo.RemoveParticipants", err)
+		log.Println("handleDelete h.GiveawayRepo.RemoveAllParticipantEntries", err)
 		return
 	}
 	participantNames, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
@@ -427,9 +434,16 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
 		return
 	}
-	err = h.ServerRepo.SetMainChannelForGuild(ctx, i.GuildID, channelId)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("handleGiveawayChannelSet h.ServerRepo.SetMainChannelForGuild", err)
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
+		return
+	}
+	serverConfig.MainChannel = channelId
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
 		return
 	}
@@ -440,7 +454,7 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		log.Println("handleGiveawayChannelSet s.Guild", err)
 		return
 	}
-	discord.CreateMissingGiveaways(ctx, s, h.ServerRepo, h.GiveawayRepo, guild)
+	h.createMissingGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -451,9 +465,16 @@ func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordg
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
 		return
 	}
-	err = h.ServerRepo.SetThxInfoChannelForGuild(ctx, i.GuildID, channelId)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("handleThxInfoChannelSet h.ServerRepo.SetThxInfoChannelForGuild", err)
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
+		return
+	}
+	serverConfig.ThxInfoChannel = channelId
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić kanału")
 		return
 	}
@@ -469,9 +490,16 @@ func (h CsrvbotCommand) handleAdminRoleSet(ctx context.Context, s *discordgo.Ses
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
 		return
 	}
-	err = h.ServerRepo.SetAdminRoleIdForGuild(ctx, i.GuildID, role.ID)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("handleAdminRoleSet h.ServerRepo.SetAdminRoleIdForGuild", err)
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
+		return
+	}
+	serverConfig.AdminRoleId = roleId
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
 		return
 	}
@@ -487,9 +515,16 @@ func (h CsrvbotCommand) handleHelperRoleSet(ctx context.Context, s *discordgo.Se
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
 		return
 	}
-	err = h.ServerRepo.SetHelperRoleIdForGuild(ctx, i.GuildID, role.ID)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("handleHelperRoleSet h.ServerRepo.SetHelperRoleIdForGuild", err)
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
+		return
+	}
+	serverConfig.HelperRoleId = roleId
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
 		return
 	}
@@ -499,13 +534,47 @@ func (h CsrvbotCommand) handleHelperRoleSet(ctx context.Context, s *discordgo.Se
 
 func (h CsrvbotCommand) handleHelperThxAmountSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	amount := i.ApplicationCommandData().Options[0].Options[0].Options[0].UintValue()
-	err := h.ServerRepo.SetHelperThxesNeededForGuild(ctx, i.GuildID, amount)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("handleHelperThxAmountSet h.ServerRepo.SetHelperThxAmountForGuild", err)
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
+		return
+	}
+	serverConfig.HelperRoleThxesNeeded = int(amount)
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
 		discord.RespondWithMessage(s, i, "Nie udało się ustawić ilości thx")
 		return
 	}
 	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " set helper thx amount to " + strconv.FormatUint(amount, 10))
 	discord.RespondWithMessage(s, i, "Ustawiono ilość thx potrzebną do uzyskania rangi helpera na "+strconv.FormatUint(amount, 10))
 	discord.CheckHelpers(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, i.GuildID)
+}
+
+func (h CsrvbotCommand) createMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
+	if err != nil {
+		log.Printf("(%s) createMissingGiveaways#ServerRepo.GetServerConfigForGuild: %v", guild.ID, err)
+		return
+	}
+	giveawayChannelId := serverConfig.MainChannel
+	_, err = s.Channel(giveawayChannelId)
+	if err != nil {
+		log.Printf("(%s) createMissingGiveaways#Session.Channel: %v", guild.ID, err)
+		return
+	}
+	_, err = h.GiveawayRepo.GetGiveawayForGuild(ctx, guild.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("(%s) createMissingGiveaways#giveawayRepo.GetGiveawayForGuild: %v", guild.ID, err)
+		return
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
+		if err != nil {
+			log.Printf("(%s) createMissingGiveaways#giveawayRepo.InsertGiveaway: %v", guild.ID, err)
+			return
+		}
+	}
 }

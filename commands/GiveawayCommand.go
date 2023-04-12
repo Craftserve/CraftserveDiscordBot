@@ -41,16 +41,12 @@ func (h GiveawayCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCr
 	ctx := pkg.CreateContext()
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not get giveaway", err)
-		return
-	}
-	if giveaway == nil {
-		log.Println("(" + i.GuildID + ") Could not get giveaway")
+		log.Printf("(%s) Could not get giveaway: %s", i.GuildID, err)
 		return
 	}
 	participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not get participants", err)
+		log.Printf("(%s) Could not get participants: %s", i.GuildID, err)
 		return
 	}
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -63,7 +59,7 @@ func (h GiveawayCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCr
 		},
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.Printf("(%s) Could not respond to interaction (%s): %v", i.GuildID, i.ID, err)
 		return
 	}
 }

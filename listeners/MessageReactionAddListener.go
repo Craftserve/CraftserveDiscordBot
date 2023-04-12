@@ -4,6 +4,8 @@ import (
 	"csrvbot/internal/repos"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"log"
@@ -31,7 +33,18 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 		return
 	}
 
-	if r.ChannelID == r.UserID {
+	isThxMessage, err := h.GiveawayRepo.IsThxMessage(ctx, r.MessageID)
+	if err != nil {
+		log.Println("("+r.GuildID+") "+"handleGiveawayReactions#h.GiveawayRepo.IsThxMessage", err)
+		return
+	}
+	isThxmeMessage, err := h.GiveawayRepo.IsThxmeMessage(ctx, r.MessageID)
+	if err != nil {
+		log.Println("("+r.GuildID+") "+"handleGiveawayReactions#h.GiveawayRepo.IsThxmeMessage", err)
+		return
+	}
+
+	if !isThxMessage && !isThxmeMessage {
 		return
 	}
 
@@ -49,19 +62,14 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 		return
 	}
 
-	isThxMessage, err := h.GiveawayRepo.IsThxMessage(ctx, r.MessageID)
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, r.GuildID)
 	if err != nil {
-		log.Println("("+r.GuildID+") "+"handleGiveawayReactions#h.GiveawayRepo.IsThxMessage", err)
-		return
-	}
-	isThxmeMessage, err := h.GiveawayRepo.IsThxmeMessage(ctx, r.MessageID)
-	if err != nil {
-		log.Println("("+r.GuildID+") "+"handleGiveawayReactions#h.GiveawayRepo.IsThxmeMessage", err)
+		log.Printf("Could not get server config for guild %s", r.GuildID)
 		return
 	}
 
 	if isThxMessage {
-		if !discord.HasAdminPermissions(ctx, s, h.ServerRepo, member, r.GuildID) {
+		if !discord.HasAdminPermissions(s, member, serverConfig.AdminRoleId, r.GuildID) {
 			err = s.MessageReactionRemove(r.ChannelID, r.MessageID, r.Emoji.Name, r.UserID)
 			if err != nil {
 				log.Println("("+r.GuildID+") "+"handleGiveawayReactions#s.MessageReactionRemove", err)
@@ -75,9 +83,15 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 			return
 		}
 
+		thxNotification, notificationErr := h.GiveawayRepo.GetThxNotification(ctx, r.MessageID)
+		if notificationErr != nil && !errors.Is(notificationErr, sql.ErrNoRows) {
+			log.Printf("Could not get thx notification for message %s", r.MessageID)
+			return
+		}
+
 		switch r.Emoji.Name {
 		case "✅":
-			err := h.GiveawayRepo.UpdateParticipant(ctx, participant, r.UserID, member.User.Username, true)
+			err := h.GiveawayRepo.UpdateParticipant(ctx, &participant, r.UserID, member.User.Username, true)
 			if err != nil {
 				log.Println("handleGiveawayReactions#UpdateParticipant", err)
 				return
@@ -97,11 +111,31 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 				log.Println("("+r.GuildID+") Could not update message", err)
 				return
 			}
-			discord.NotifyThxOnThxInfoChannel(ctx, s, h.ServerRepo, h.GiveawayRepo, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
+
+			if errors.Is(notificationErr, sql.ErrNoRows) {
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+
+				err = h.GiveawayRepo.InsertThxNotification(ctx, r.MessageID, notificationMessageId)
+				if err != nil {
+					log.Printf("(%s) Could not insert thx notification", r.GuildID)
+					return
+				}
+			} else {
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+			}
+
 			discord.CheckHelper(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, r.GuildID, participant.UserId)
 			break
 		case "⛔":
-			err := h.GiveawayRepo.UpdateParticipant(ctx, participant, r.UserID, member.User.Username, false)
+			err := h.GiveawayRepo.UpdateParticipant(ctx, &participant, r.UserID, member.User.Username, false)
 			if err != nil {
 				log.Println("handleGiveawayReactions#UpdateParticipant", err)
 				return
@@ -121,7 +155,27 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 				log.Println("("+r.GuildID+") Could not update message", err)
 				return
 			}
-			discord.NotifyThxOnThxInfoChannel(ctx, s, h.ServerRepo, h.GiveawayRepo, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
+
+			if errors.Is(notificationErr, sql.ErrNoRows) {
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+
+				err = h.GiveawayRepo.InsertThxNotification(ctx, r.MessageID, notificationMessageId)
+				if err != nil {
+					log.Printf("(%s) Could not insert thx notification", r.GuildID)
+					return
+				}
+			} else {
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+			}
+
 			discord.CheckHelper(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, r.GuildID, participant.UserId)
 			break
 		}
@@ -142,7 +196,7 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 		// reactionists...
 		switch r.Emoji.Name {
 		case "✅":
-			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, candidate, true)
+			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, true)
 			if err != nil {
 				log.Println("handleGiveawayReactions#UpdateParticipant", err)
 				return
@@ -150,7 +204,7 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 			log.Println(candidate.CandidateApproverName + "(" + candidate.CandidateApproverId + ") zaakceptował prosbe o thx uzytkownika " + candidate.CandidateName + "(" + candidate.CandidateId + ")")
 
 			giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, r.GuildID)
-			if err != nil || giveaway == nil {
+			if err != nil {
 				log.Println("("+r.GuildID+") Could not get giveaway", err)
 				return
 			}
@@ -188,11 +242,35 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 				return
 			}
 			log.Println("(" + r.GuildID + ") " + member.User.Username + " has thanked " + candidate.CandidateName)
-			discord.NotifyThxOnThxInfoChannel(ctx, s, h.ServerRepo, h.GiveawayRepo, r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
 
+			thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, r.MessageID)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				log.Printf("Could not get thx notification for message %s", r.MessageID)
+				return
+			}
+
+			if errors.Is(err, sql.ErrNoRows) {
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+
+				err = h.GiveawayRepo.InsertThxNotification(ctx, r.MessageID, notificationMessageId)
+				if err != nil {
+					log.Printf("(%s) Could not insert thx notification", r.GuildID)
+					return
+				}
+			} else {
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
+				if err != nil {
+					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					return
+				}
+			}
 			break
 		case "⛔":
-			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, candidate, false)
+			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, false)
 			if err != nil {
 				log.Println("handleGiveawayReactions#UpdateParticipant", err)
 				return

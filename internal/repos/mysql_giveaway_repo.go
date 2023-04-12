@@ -73,25 +73,19 @@ type ParticipantWithThxAmount struct {
 	ThxAmount int    `db:"amount"`
 }
 
-func (repo *GiveawayRepo) GetGiveawayForGuild(ctx context.Context, guildId string) (*Giveaway, error) {
+func (repo *GiveawayRepo) GetGiveawayForGuild(ctx context.Context, guildId string) (Giveaway, error) {
 	var giveaway Giveaway
 	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, start_time, end_time, guild_id, guild_name, winner_id, winner_name, info_message_id, code FROM giveaways WHERE guild_id = ? AND end_time IS NULL", guildId)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, err
+		return Giveaway{}, err
 	}
-	return &giveaway, nil
+	return giveaway, nil
 }
 
 func (repo *GiveawayRepo) GetParticipantNamesForGiveaway(ctx context.Context, giveawayId int) ([]string, error) {
 	var participants []Participant
 	_, err := repo.mysql.WithContext(ctx).Select(&participants, "SELECT user_name FROM participants WHERE giveaway_id = ? AND is_accepted = true", giveawayId)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, err
-		}
 		return nil, err
 	}
 	names := make([]string, len(participants))
@@ -176,13 +170,13 @@ func (repo *GiveawayRepo) GetParticipantsForGiveaway(ctx context.Context, giveaw
 	return participants, nil
 }
 
-func (repo *GiveawayRepo) GetThxNotification(ctx context.Context, messageId string) (*ThxNotification, error) {
+func (repo *GiveawayRepo) GetThxNotification(ctx context.Context, messageId string) (ThxNotification, error) {
 	var notification ThxNotification
 	err := repo.mysql.WithContext(ctx).SelectOne(&notification, "SELECT id, message_id, thx_notification_message_id FROM thx_notifications WHERE message_id = ?", messageId)
 	if err != nil {
-		return nil, err
+		return ThxNotification{}, err
 	}
-	return &notification, nil
+	return notification, nil
 }
 
 func (repo *GiveawayRepo) InsertThxNotification(ctx context.Context, thxMessageId string, notificationMessageId string) error {
@@ -215,16 +209,13 @@ func (repo *GiveawayRepo) IsThxmeMessage(ctx context.Context, messageId string) 
 	return ret > 0, nil
 }
 
-func (repo *GiveawayRepo) GetParticipant(ctx context.Context, messageId string) (*Participant, error) {
+func (repo *GiveawayRepo) GetParticipant(ctx context.Context, messageId string) (Participant, error) {
 	var participant Participant
 	err := repo.mysql.WithContext(ctx).SelectOne(&participant, "SELECT * FROM participants WHERE message_id = ?", messageId)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
+		return Participant{}, err
 	}
-	return &participant, nil
+	return participant, nil
 }
 
 func (repo *GiveawayRepo) UpdateParticipant(ctx context.Context, participant *Participant, acceptUserId, acceptUsername string, isAccepted bool) error {
@@ -240,16 +231,13 @@ func (repo *GiveawayRepo) UpdateParticipant(ctx context.Context, participant *Pa
 	return nil
 }
 
-func (repo *GiveawayRepo) GetParticipantCandidate(ctx context.Context, messageId string) (*ParticipantCandidate, error) {
+func (repo *GiveawayRepo) GetParticipantCandidate(ctx context.Context, messageId string) (ParticipantCandidate, error) {
 	var participantCandidate ParticipantCandidate
 	err := repo.mysql.WithContext(ctx).SelectOne(&participantCandidate, "SELECT id, candidate_id, candidate_name, candidate_approver_id, candidate_approver_name, guild_id, guild_name, message_id, channel_id, is_accepted, accept_time FROM participant_candidates WHERE message_id = ?", messageId)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
+		return ParticipantCandidate{}, err
 	}
-	return &participantCandidate, nil
+	return participantCandidate, nil
 }
 
 func (repo *GiveawayRepo) UpdateParticipantCandidate(ctx context.Context, participantCandidate *ParticipantCandidate, isAccepted bool) error {
@@ -286,7 +274,7 @@ func (repo *GiveawayRepo) GetUnfinishedGiveaways(ctx context.Context) ([]Giveawa
 	return giveaways, nil
 }
 
-func (repo *GiveawayRepo) RemoveParticipants(ctx context.Context, giveawayId int, participantId string) error {
+func (repo *GiveawayRepo) RemoveAllParticipantEntries(ctx context.Context, giveawayId int, participantId string) error {
 	_, err := repo.mysql.WithContext(ctx).Exec("UPDATE participants SET is_accepted=false WHERE giveaway_id = ? AND user_id = ?", giveawayId, participantId)
 	if err != nil {
 		return err

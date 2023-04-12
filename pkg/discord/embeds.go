@@ -54,7 +54,7 @@ func ConstructThxEmbed(participants []string, giveawayHours, participantId, conf
 	return embed
 }
 
-func ConstructThxNotificationEmbed(guildId, channelId, messageId, participantId, confirmerId, state string) *discordgo.MessageEmbed {
+func ConstructThxNotificationEmbed(guildId, thxChannelId, thxMessageId, participantId, confirmerId, state string) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Timestamp: time.Now().Format(time.RFC3339),
 		Author: &discordgo.MessageEmbedAuthor{
@@ -66,7 +66,7 @@ func ConstructThxNotificationEmbed(guildId, channelId, messageId, participantId,
 	}
 	embed.Fields = []*discordgo.MessageEmbedField{}
 	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Dla", Value: "<@" + participantId + ">", Inline: true})
-	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Kanał", Value: "<#" + channelId + ">", Inline: true})
+	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Kanał", Value: "<#" + thxChannelId + ">", Inline: true})
 
 	switch state {
 	case "wait":
@@ -83,7 +83,7 @@ func ConstructThxNotificationEmbed(guildId, channelId, messageId, participantId,
 		}
 		break
 	}
-	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Link", Value: "https://discordapp.com/channels/" + guildId + "/" + channelId + "/" + messageId, Inline: false})
+	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Link", Value: "https://discordapp.com/channels/" + guildId + "/" + thxChannelId + "/" + thxMessageId, Inline: false})
 
 	return embed
 }

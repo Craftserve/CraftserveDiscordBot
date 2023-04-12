@@ -1,44 +1,27 @@
 package discord
 
 import (
-	"context"
-	"csrvbot/internal/repos"
-	"database/sql"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
-func NotifyThxOnThxInfoChannel(ctx context.Context, s *discordgo.Session, serverRepo repos.ServerRepo, giveawayRepo repos.GiveawayRepo, guildId, channelId, messageId, participantId, confirmerId, state string) {
-	embed := ConstructThxNotificationEmbed(guildId, channelId, messageId, participantId, confirmerId, state)
+func NotifyThxOnThxInfoChannel(s *discordgo.Session, thxInfoChannelId, thxNotificationMessageId, guildId, channelId, thxMessageId, participantId, confirmerId, state string) (string, error) {
+	embed := ConstructThxNotificationEmbed(guildId, channelId, thxMessageId, participantId, confirmerId, state)
 
-	serverConfig, err := serverRepo.GetServerConfigForGuild(ctx, guildId)
-	if err != nil {
-		log.Println("("+guildId+") "+"NotifyThxOnThxInfoChannel#serverRepo.GetServerConfigForGuild", err)
-		return
+	if thxInfoChannelId == "" {
+		return "", nil
 	}
 
-	if serverConfig.ThxInfoChannel == "" {
-		return
-	}
-
-	thxNotification, err := giveawayRepo.GetThxNotification(ctx, messageId)
-	if err == sql.ErrNoRows {
-		message, err := s.ChannelMessageSendEmbed(serverConfig.ThxInfoChannel, embed)
+	if thxNotificationMessageId == "" {
+		message, err := s.ChannelMessageSendEmbed(thxInfoChannelId, embed)
 		if err != nil {
-			log.Println("("+guildId+") "+"notifyThxOnThxInfoChannel#session.ChannelMessageSendEmbed Unable to send thx info!", err)
-			return
+			return "", err
 		}
-
-		err = giveawayRepo.InsertThxNotification(ctx, messageId, message.ID)
+		return message.ID, nil
+	} else {
+		_, err := s.ChannelMessageEditEmbed(thxInfoChannelId, thxNotificationMessageId, embed)
 		if err != nil {
-			log.Println("("+guildId+") "+"notifyThxOnThxInfoChannel#DbMap.Insert Unable to insert to database!", err)
-			return
+			return "", err
 		}
-		return
-	}
-
-	_, err = s.ChannelMessageEditEmbed(serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, embed)
-	if err != nil {
-		log.Println("("+guildId+") "+"notifyThxOnThxInfoChannel#session.ChannelMessageEditEmbed Unable to edit embed!", err)
+		return thxNotificationMessageId, nil
 	}
 }
