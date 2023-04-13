@@ -79,7 +79,14 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 	var selectedUser *discordgo.User
 	data := i.ApplicationCommandData()
 	if len(data.Options) == 0 {
-		selectedUser = data.Resolved.Messages[data.TargetID].Author
+		if len(data.Resolved.Messages) != 0 {
+			selectedUser = data.Resolved.Messages[data.TargetID].Author
+		} else if len(data.Resolved.Users) != 0 {
+			selectedUser = data.Resolved.Users[data.TargetID]
+		} else {
+			log.Printf("(%s) handleThxCommand# could not get selectedUser", i.GuildID)
+			return
+		}
 	} else {
 		selectedUser = data.Options[0].UserValue(s)
 	}
