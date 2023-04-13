@@ -167,7 +167,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 			return
 		}
 	} else {
-		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
 		if err != nil {
 			log.Printf("(%s) Could not notify thx on thx info channel", i.GuildID)
 			return

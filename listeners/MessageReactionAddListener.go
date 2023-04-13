@@ -2,6 +2,7 @@ package listeners
 
 import (
 	"csrvbot/internal/repos"
+	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
 	"database/sql"
@@ -16,14 +17,16 @@ type MessageReactionAddListener struct {
 	UserRepo      repos.UserRepo
 	GiveawayRepo  repos.GiveawayRepo
 	ServerRepo    repos.ServerRepo
+	HelperService services.HelperService
 }
 
-func NewMessageReactionAddListener(giveawayHours string, userRepo *repos.UserRepo, giveawayRepo *repos.GiveawayRepo, serverRepo *repos.ServerRepo) MessageReactionAddListener {
+func NewMessageReactionAddListener(giveawayHours string, userRepo *repos.UserRepo, giveawayRepo *repos.GiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService) MessageReactionAddListener {
 	return MessageReactionAddListener{
 		GiveawayHours: giveawayHours,
 		UserRepo:      *userRepo,
 		GiveawayRepo:  *giveawayRepo,
 		ServerRepo:    *serverRepo,
+		HelperService: *helperService,
 	}
 }
 
@@ -115,7 +118,7 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 			if errors.Is(notificationErr, sql.ErrNoRows) {
 				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 
@@ -125,14 +128,14 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "confirm")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 			}
 
-			discord.CheckHelper(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, r.GuildID, participant.UserId)
+			h.HelperService.CheckHelper(ctx, s, r.GuildID, participant.UserId)
 			break
 		case "⛔":
 			err := h.GiveawayRepo.UpdateParticipant(ctx, &participant, r.UserID, member.User.Username, false)
@@ -159,7 +162,7 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 			if errors.Is(notificationErr, sql.ErrNoRows) {
 				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 
@@ -169,14 +172,14 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, participant.UserId, r.UserID, "reject")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 			}
 
-			discord.CheckHelper(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, r.GuildID, participant.UserId)
+			h.HelperService.CheckHelper(ctx, s, r.GuildID, participant.UserId)
 			break
 		}
 	} else if isThxmeMessage {
@@ -252,7 +255,7 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 			if errors.Is(err, sql.ErrNoRows) {
 				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 
@@ -262,9 +265,9 @@ func (h MessageReactionAddListener) Handle(s *discordgo.Session, r *discordgo.Me
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.ThxNotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, r.GuildID, r.ChannelID, r.MessageID, candidate.CandidateId, "", "wait")
 				if err != nil {
-					log.Printf("(%s) Could not notify thx on thx info channel", r.GuildID)
+					log.Printf("(%s) Could not notify thx on thx info channel: %v", r.GuildID, err)
 					return
 				}
 			}

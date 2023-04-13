@@ -63,9 +63,9 @@ type ParticipantCandidate struct {
 }
 
 type ThxNotification struct {
-	Id                       int    `db:"id,primarykey,autoincrement"`
-	MessageId                string `db:"message_id,size:255"`
-	ThxNotificationMessageId string `db:"thx_notification_message_id,size:255"`
+	Id                    int    `db:"id,primarykey,autoincrement"`
+	ThxMessageId          string `db:"thx_message_id,size:255"`
+	NotificationMessageId string `db:"notification_message_id,size:255"`
 }
 
 type ParticipantWithThxAmount struct {
@@ -172,17 +172,17 @@ func (repo *GiveawayRepo) GetParticipantsForGiveaway(ctx context.Context, giveaw
 
 func (repo *GiveawayRepo) GetThxNotification(ctx context.Context, messageId string) (ThxNotification, error) {
 	var notification ThxNotification
-	err := repo.mysql.WithContext(ctx).SelectOne(&notification, "SELECT id, message_id, thx_notification_message_id FROM thx_notifications WHERE message_id = ?", messageId)
+	err := repo.mysql.WithContext(ctx).SelectOne(&notification, "SELECT id, thx_message_id, notification_message_id FROM thx_notifications WHERE thx_message_id = ?", messageId)
 	if err != nil {
 		return ThxNotification{}, err
 	}
 	return notification, nil
 }
 
-func (repo *GiveawayRepo) InsertThxNotification(ctx context.Context, thxMessageId string, notificationMessageId string) error {
+func (repo *GiveawayRepo) InsertThxNotification(ctx context.Context, thxMessageId, notificationMessageId string) error {
 	notification := &ThxNotification{
-		MessageId:                thxMessageId,
-		ThxNotificationMessageId: notificationMessageId,
+		ThxMessageId:          thxMessageId,
+		NotificationMessageId: notificationMessageId,
 	}
 	err := repo.mysql.WithContext(ctx).Insert(notification)
 	if err != nil {

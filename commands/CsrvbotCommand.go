@@ -6,35 +6,38 @@ import (
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
-	"database/sql"
-	"errors"
 	"github.com/bwmarrin/discordgo"
 	"log"
 	"strconv"
 )
 
 type CsrvbotCommand struct {
-	Name          string
-	Description   string
-	DMPermission  bool
-	ThxMinValue   float64
-	GiveawayHours string
-	ServerRepo    repos.ServerRepo
-	GiveawayRepo  repos.GiveawayRepo
-	UserRepo      repos.UserRepo
-	CsrvClient    services.CsrvClient
+	Name            string
+	Description     string
+	DMPermission    bool
+	ThxMinValue     float64
+	GiveawayHours   string
+	ServerRepo      repos.ServerRepo
+	GiveawayRepo    repos.GiveawayRepo
+	UserRepo        repos.UserRepo
+	CsrvClient      services.CsrvClient
+	GiveawayService services.GiveawayService
+	HelperService   services.HelperService
 }
 
-func NewCsrvbotCommand(serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient) CsrvbotCommand {
+func NewCsrvbotCommand(giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
-		Name:         "csrvbot",
-		Description:  "Komendy konfiguracyjne i administracyjne",
-		DMPermission: false,
-		ThxMinValue:  0.0,
-		ServerRepo:   *serverRepo,
-		GiveawayRepo: *giveawayRepo,
-		UserRepo:     *userRepo,
-		CsrvClient:   *csrvClient,
+		Name:            "csrvbot",
+		Description:     "Komendy konfiguracyjne i administracyjne",
+		DMPermission:    false,
+		ThxMinValue:     0.0,
+		GiveawayHours:   giveawayHours,
+		ServerRepo:      *serverRepo,
+		GiveawayRepo:    *giveawayRepo,
+		UserRepo:        *userRepo,
+		CsrvClient:      *csrvClient,
+		GiveawayService: *giveawayService,
+		HelperService:   *helperService,
 	}
 }
 
@@ -278,10 +281,10 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		}
 	}
 
-	discord.FinishGiveaway(ctx, s, h.ServerRepo, h.GiveawayRepo, h.CsrvClient, guild.ID)
+	h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
 	discord.RespondWithMessage(s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
 
-	h.createMissingGiveaways(ctx, s, guild)
+	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -454,7 +457,7 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		log.Println("handleGiveawayChannelSet s.Guild", err)
 		return
 	}
-	h.createMissingGiveaways(ctx, s, guild)
+	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -549,32 +552,5 @@ func (h CsrvbotCommand) handleHelperThxAmountSet(ctx context.Context, s *discord
 	}
 	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " set helper thx amount to " + strconv.FormatUint(amount, 10))
 	discord.RespondWithMessage(s, i, "Ustawiono ilość thx potrzebną do uzyskania rangi helpera na "+strconv.FormatUint(amount, 10))
-	discord.CheckHelpers(ctx, s, h.ServerRepo, h.GiveawayRepo, h.UserRepo, i.GuildID)
-}
-
-func (h CsrvbotCommand) createMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
-	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
-	if err != nil {
-		log.Printf("(%s) createMissingGiveaways#ServerRepo.GetServerConfigForGuild: %v", guild.ID, err)
-		return
-	}
-	giveawayChannelId := serverConfig.MainChannel
-	_, err = s.Channel(giveawayChannelId)
-	if err != nil {
-		log.Printf("(%s) createMissingGiveaways#Session.Channel: %v", guild.ID, err)
-		return
-	}
-	_, err = h.GiveawayRepo.GetGiveawayForGuild(ctx, guild.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Printf("(%s) createMissingGiveaways#giveawayRepo.GetGiveawayForGuild: %v", guild.ID, err)
-		return
-	}
-
-	if errors.Is(err, sql.ErrNoRows) {
-		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
-		if err != nil {
-			log.Printf("(%s) createMissingGiveaways#giveawayRepo.InsertGiveaway: %v", guild.ID, err)
-			return
-		}
-	}
+	h.HelperService.CheckHelpers(ctx, s, i.GuildID)
 }

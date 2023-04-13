@@ -7,7 +7,6 @@ import (
 	"csrvbot/listeners"
 	"csrvbot/pkg"
 	"csrvbot/pkg/database"
-	"csrvbot/pkg/discord"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"github.com/robfig/cron"
@@ -62,6 +61,8 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret)
 	var githubClient = services.NewGithubClient()
+	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo)
+	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
 	if err != nil {
@@ -73,14 +74,14 @@ func main() {
 	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.GiveawayTimeString)
 	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.GiveawayTimeString)
 	var thxmeCommand = commands.NewThxmeCommand(giveawayRepo, userRepo, serverRepo, BotConfig.GiveawayTimeString)
-	var csrvbotCommand = commands.NewCsrvbotCommand(serverRepo, giveawayRepo, userRepo, csrvClient)
+	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.GiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo)
 	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, giveawayRepo)
-	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, userRepo)
+	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, userRepo, giveawayService, helperService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo)
-	var messageReactionAddListener = listeners.NewMessageReactionAddListener(BotConfig.GiveawayTimeString, userRepo, giveawayRepo, serverRepo)
+	var messageReactionAddListener = listeners.NewMessageReactionAddListener(BotConfig.GiveawayTimeString, userRepo, giveawayRepo, serverRepo, helperService)
 	session.AddHandler(interactionCreateListener.Handle)
 	session.AddHandler(guildCreateListener.Handle)
 	session.AddHandler(guildMemberAddListener.Handle)
@@ -103,7 +104,7 @@ func main() {
 
 	c := cron.New()
 	_ = c.AddFunc(BotConfig.GiveawayCron, func() {
-		discord.FinishGiveaways(ctx, session, *giveawayRepo, *serverRepo, *csrvClient)
+		giveawayService.FinishGiveaways(ctx, session)
 	})
 	c.Start()
 
