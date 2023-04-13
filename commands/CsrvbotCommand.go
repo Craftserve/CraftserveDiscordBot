@@ -201,24 +201,6 @@ func (h CsrvbotCommand) Register(s *discordgo.Session) {
 	if err != nil {
 		log.Println("Could not register command", err)
 	}
-	// todo handle context commands for blacklists
-	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
-		Name:         "blacklist",
-		DMPermission: &h.DMPermission,
-		Type:         discordgo.MessageApplicationCommand,
-	})
-	if err != nil {
-		log.Println("Could not register context command", err)
-	}
-
-	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
-		Name:         "blacklist",
-		DMPermission: &h.DMPermission,
-		Type:         discordgo.UserApplicationCommand,
-	})
-	if err != nil {
-		log.Println("Could not register context command", err)
-	}
 }
 
 func (h CsrvbotCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
