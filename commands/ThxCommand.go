@@ -99,7 +99,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		discord.RespondWithMessage(s, i, "Nie można dziękować botom!")
 		return
 	}
-	isUserBlacklisted, err := h.UserRepo.IsUserBlacklisted(ctx, i.GuildID, selectedUser.ID)
+	isUserBlacklisted, err := h.UserRepo.IsUserBlacklisted(ctx, selectedUser.ID, i.GuildID)
 	if err != nil {
 		log.Println("("+i.GuildID+") handleThxCommand#UserRepo.IsUserBlacklisted", err)
 		return
