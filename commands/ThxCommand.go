@@ -124,6 +124,28 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
+			Components: []discordgo.MessageComponent{
+				&discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						&discordgo.Button{
+							Label:    "",
+							Style:    discordgo.SuccessButton,
+							CustomID: "thx_accept",
+							Emoji: discordgo.ComponentEmoji{
+								Name: "✅",
+							},
+						},
+						&discordgo.Button{
+							Label:    "",
+							Style:    discordgo.DangerButton,
+							CustomID: "thx_decline",
+							Emoji: discordgo.ComponentEmoji{
+								Name: "⛔",
+							},
+						},
+					},
+				},
+			},
 			Embeds: []*discordgo.MessageEmbed{embed},
 		},
 	})
@@ -181,8 +203,4 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		}
 	}
 
-	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅") {
-	}
-	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔") {
-	}
 }
