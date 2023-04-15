@@ -4,6 +4,7 @@ import (
 	"csrvbot/internal/repos"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -107,7 +108,38 @@ func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		return
 	}
 
-	discord.RespondWithMessage(s, i, selectedUser.Mention()+", czy chcesz podziękować użytkownikowi "+author.Mention()+"?")
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Components: []discordgo.MessageComponent{
+				&discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						&discordgo.Button{
+							Label:    "",
+							Style:    discordgo.SuccessButton,
+							CustomID: "accept",
+							Emoji: discordgo.ComponentEmoji{
+								Name: "✅",
+							},
+						},
+						&discordgo.Button{
+							Label:    "",
+							Style:    discordgo.DangerButton,
+							CustomID: "reject",
+							Emoji: discordgo.ComponentEmoji{
+								Name: "⛔",
+							},
+						},
+					},
+				},
+			},
+			Content: fmt.Sprintf("%s, czy chcesz podziękować użytkownikowi %s?", selectedUser.Mention(), author.Username),
+		},
+	})
+	if err != nil {
+		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		return
+	}
 
 	response, err := s.InteractionResponse(i.Interaction)
 	if err != nil {
@@ -126,8 +158,4 @@ func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 	log.Println("(" + i.GuildID + ") " + author.Username + " has requested thx from " + selectedUser.Username)
 
-	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "✅") {
-	}
-	for err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔"); err != nil; err = s.MessageReactionAdd(i.ChannelID, response.ID, "⛔") {
-	}
 }

@@ -205,11 +205,7 @@ func (h CsrvbotCommand) Register(s *discordgo.Session) {
 
 func (h CsrvbotCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	ctx := pkg.CreateContext()
-	member, err := s.GuildMember(i.GuildID, i.Member.User.ID)
-	if err != nil {
-		log.Println("("+i.GuildID+") "+"handleGiveawayReactions#s.GuildMember", err)
-		return
-	}
+	member := i.Member
 	adminRole, err := h.ServerRepo.GetAdminRoleForGuild(ctx, i.GuildID)
 	if err != nil {
 		log.Printf("(%s) Could not get admin role for guild: %s", i.GuildID, err)
@@ -302,16 +298,6 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			log.Println("("+i.GuildID+") Could not update message", err)
 			return
 		}
-		acceptUserId := participant.AcceptUserId
-		if !acceptUserId.Valid {
-			return
-		}
-		err = s.MessageReactionRemove(participant.ChannelId, participant.MessageId, "✅", acceptUserId.String)
-		if err != nil {
-			log.Println("("+i.GuildID+") Could not remove reaction", err)
-			return
-		}
-
 	}
 }
 

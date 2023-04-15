@@ -130,7 +130,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 						&discordgo.Button{
 							Label:    "",
 							Style:    discordgo.SuccessButton,
-							CustomID: "thx_accept",
+							CustomID: "accept",
 							Emoji: discordgo.ComponentEmoji{
 								Name: "✅",
 							},
@@ -138,7 +138,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 						&discordgo.Button{
 							Label:    "",
 							Style:    discordgo.DangerButton,
-							CustomID: "thx_decline",
+							CustomID: "reject",
 							Emoji: discordgo.ComponentEmoji{
 								Name: "⛔",
 							},
@@ -167,6 +167,9 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &str,
 		})
+		if err != nil {
+			log.Println("("+i.GuildID+") Could not edit interaction response", err)
+		}
 		return
 	}
 	log.Println("(" + i.GuildID + ") " + author.Username + " has thanked " + selectedUser.Username)

@@ -69,7 +69,7 @@ func main() {
 		panic(err)
 	}
 
-	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentsGuildMembers
+	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
 
 	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.GiveawayTimeString)
 	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.GiveawayTimeString)
@@ -77,16 +77,14 @@ func main() {
 	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.GiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, giveawayRepo, serverRepo, helperService)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.GiveawayTimeString, giveawayRepo, serverRepo, helperService)
 	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, userRepo, giveawayService, helperService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo)
-	var messageReactionAddListener = listeners.NewMessageReactionAddListener(BotConfig.GiveawayTimeString, userRepo, giveawayRepo, serverRepo, helperService)
 	session.AddHandler(interactionCreateListener.Handle)
 	session.AddHandler(guildCreateListener.Handle)
 	session.AddHandler(guildMemberAddListener.Handle)
 	session.AddHandler(guildMemberUpdateListener.Handle)
-	session.AddHandler(messageReactionAddListener.Handle)
 
 	err = session.Open()
 	if err != nil {
