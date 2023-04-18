@@ -78,7 +78,9 @@ func ConstructThxNotificationEmbed(guildId, thxChannelId, thxMessageId, particip
 		}
 		break
 	case "reject":
-		if confirmerId != "" {
+		if confirmerId == "" {
+			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Status", Value: "Odrzucono", Inline: true})
+		} else {
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Status", Value: "Odrzucono przez <@" + confirmerId + ">", Inline: true})
 		}
 		break

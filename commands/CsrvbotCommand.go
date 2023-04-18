@@ -288,6 +288,11 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 		log.Println("handleDelete h.GiveawayRepo.GetParticipantNamesForGiveaway", err)
 		return
 	}
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+	if err != nil {
+		log.Printf("Could not get server config for guild %s", i.GuildID)
+		return
+	}
 	for _, participant := range participants {
 		if participant.UserId != selectedUser.ID {
 			return
@@ -298,6 +303,17 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			log.Println("("+i.GuildID+") Could not update message", err)
 			return
 		}
+		thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, participant.MessageId)
+		if err != nil {
+			log.Printf("Could not get thx notification for message %s", participant.MessageId)
+			return
+		}
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, participant.MessageId, participant.UserId, "", "reject")
+		if err != nil {
+			log.Printf("(%s) Could not update notification on thx info channel", i.GuildID)
+			return
+		}
+
 	}
 }
 
@@ -373,6 +389,7 @@ func (h CsrvbotCommand) handleHelperBlacklist(ctx context.Context, s *discordgo.
 	}
 	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " helper-blacklisted " + selectedUser.Username)
 	discord.RespondWithMessage(s, i, "Użytkownik został zablokowany z możliwości zostania pomocnym")
+	h.HelperService.CheckHelper(ctx, s, i.GuildID, selectedUser.ID)
 }
 
 func (h CsrvbotCommand) handleHelperUnblacklist(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -395,6 +412,7 @@ func (h CsrvbotCommand) handleHelperUnblacklist(ctx context.Context, s *discordg
 	}
 	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " helper-unblacklisted " + selectedUser.Username)
 	discord.RespondWithMessage(s, i, "Użytkownik został usunięty z helper-blacklisty")
+	h.HelperService.CheckHelper(ctx, s, i.GuildID, selectedUser.ID)
 }
 
 func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {

@@ -132,7 +132,7 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		}
 		return
 	}
-	if hasRole {
+	if hasRole || isHelperBlacklisted {
 		return
 	}
 	log.Printf("(%s) Adding helper role to %s (%s)", guildId, member.User.Username, member.User.ID)
