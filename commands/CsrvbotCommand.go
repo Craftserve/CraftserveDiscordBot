@@ -12,40 +12,43 @@ import (
 )
 
 type CsrvbotCommand struct {
-	Name            string
-	Description     string
-	DMPermission    bool
-	ThxMinValue     float64
-	GiveawayHours   string
-	ServerRepo      repos.ServerRepo
-	GiveawayRepo    repos.GiveawayRepo
-	UserRepo        repos.UserRepo
-	CsrvClient      services.CsrvClient
-	GiveawayService services.GiveawayService
-	HelperService   services.HelperService
+	Name                     string
+	Description              string
+	DMPermission             bool
+	DefaultMemberPermissions int64
+	ThxMinValue              float64
+	GiveawayHours            string
+	ServerRepo               repos.ServerRepo
+	GiveawayRepo             repos.GiveawayRepo
+	UserRepo                 repos.UserRepo
+	CsrvClient               services.CsrvClient
+	GiveawayService          services.GiveawayService
+	HelperService            services.HelperService
 }
 
 func NewCsrvbotCommand(giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
-		Name:            "csrvbot",
-		Description:     "Komendy konfiguracyjne i administracyjne",
-		DMPermission:    false,
-		ThxMinValue:     0.0,
-		GiveawayHours:   giveawayHours,
-		ServerRepo:      *serverRepo,
-		GiveawayRepo:    *giveawayRepo,
-		UserRepo:        *userRepo,
-		CsrvClient:      *csrvClient,
-		GiveawayService: *giveawayService,
-		HelperService:   *helperService,
+		Name:                     "csrvbot",
+		Description:              "Komendy konfiguracyjne i administracyjne",
+		DMPermission:             false,
+		DefaultMemberPermissions: discordgo.PermissionManageMessages,
+		ThxMinValue:              0.0,
+		GiveawayHours:            giveawayHours,
+		ServerRepo:               *serverRepo,
+		GiveawayRepo:             *giveawayRepo,
+		UserRepo:                 *userRepo,
+		CsrvClient:               *csrvClient,
+		GiveawayService:          *giveawayService,
+		HelperService:            *helperService,
 	}
 }
 
 func (h CsrvbotCommand) Register(s *discordgo.Session) {
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
-		Name:         h.Name,
-		Description:  h.Description,
-		DMPermission: &h.DMPermission,
+		Name:                     h.Name,
+		Description:              h.Description,
+		DMPermission:             &h.DMPermission,
+		DefaultMemberPermissions: &h.DefaultMemberPermissions,
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Name:        "settings",
