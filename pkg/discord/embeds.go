@@ -119,6 +119,18 @@ func ConstructChannelWinnerEmbed(username string) *discordgo.MessageEmbed {
 	return embed
 }
 
+func ConstructChannelMessageWinnerEmbed(usernames []string) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     "https://craftserve.pl",
+			Name:    "Wyniki giveaway!",
+			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+		},
+		Description: strings.Join(usernames, ", ") + " wygrali kody. Gratulacje!",
+	}
+	return embed
+}
+
 func ConstructResendEmbed(codes []string) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{

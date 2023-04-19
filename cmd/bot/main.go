@@ -15,11 +15,12 @@ import (
 )
 
 type Config struct {
-	MysqlConfig        []database.MySQLConfiguration `json:"mysql_config"`
-	GiveawayCron       string                        `json:"cron_line"`
-	GiveawayTimeString string                        `json:"giveaway_time_string"`
-	SystemToken        string                        `json:"system_token"`
-	CsrvSecret         string                        `json:"csrv_secret"`
+	MysqlConfig           []database.MySQLConfiguration `json:"mysql_config"`
+	ThxGiveawayCron       string                        `json:"thx_giveaway_cron_line"`
+	ThxGiveawayTimeString string                        `json:"thx_giveaway_time_string"`
+	MessageGiveawayCron   string                        `json:"message_giveaway_cron_line"`
+	SystemToken           string                        `json:"system_token"`
+	CsrvSecret            string                        `json:"csrv_secret"`
 }
 
 var BotConfig Config
@@ -51,6 +52,7 @@ func main() {
 	}
 
 	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
+	var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 
@@ -61,7 +63,7 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret)
 	var githubClient = services.NewGithubClient()
-	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo)
+	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo, messageGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
@@ -71,20 +73,22 @@ func main() {
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
 
-	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.GiveawayTimeString)
-	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.GiveawayTimeString)
-	var thxmeCommand = commands.NewThxmeCommand(giveawayRepo, userRepo, serverRepo, BotConfig.GiveawayTimeString)
-	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.GiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
+	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.ThxGiveawayTimeString)
+	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
+	var thxmeCommand = commands.NewThxmeCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
+	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.ThxGiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.GiveawayTimeString, giveawayRepo, serverRepo, helperService)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, giveawayRepo, serverRepo, helperService)
 	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, userRepo, giveawayService, helperService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo)
+	var messageCreateListener = listeners.NewMessageCreateListener(messageGiveawayRepo)
 	session.AddHandler(interactionCreateListener.Handle)
 	session.AddHandler(guildCreateListener.Handle)
 	session.AddHandler(guildMemberAddListener.Handle)
 	session.AddHandler(guildMemberUpdateListener.Handle)
+	session.AddHandler(messageCreateListener.Handle)
 
 	err = session.Open()
 	if err != nil {
@@ -101,8 +105,11 @@ func main() {
 	resendCommand.Register(session)
 
 	c := cron.New()
-	_ = c.AddFunc(BotConfig.GiveawayCron, func() {
+	_ = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
 		giveawayService.FinishGiveaways(ctx, session)
+	})
+	_ = c.AddFunc(BotConfig.MessageGiveawayCron, func() {
+		giveawayService.FinishMessageGiveaways(ctx, session)
 	})
 	c.Start()
 

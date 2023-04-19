@@ -16,18 +16,19 @@ func NewServerRepo(mysql *gorp.DbMap) *ServerRepo {
 }
 
 type ServerConfig struct {
-	Id                    int    `db:"id,primarykey,autoincrement"`
-	GuildId               string `db:"guild_id,size:255"`
-	AdminRoleId           string `db:"admin_role_id,size:255"`
-	MainChannel           string `db:"main_channel,size:255"`
-	ThxInfoChannel        string `db:"thx_info_channel,size:255"`
-	HelperRoleId          string `db:"helper_role_id,size:255"`
-	HelperRoleThxesNeeded int    `db:"helper_role_thxes_needed"`
+	Id                     int    `db:"id,primarykey,autoincrement"`
+	GuildId                string `db:"guild_id,size:255"`
+	AdminRoleId            string `db:"admin_role_id,size:255"`
+	MainChannel            string `db:"main_channel,size:255"`
+	ThxInfoChannel         string `db:"thx_info_channel,size:255"`
+	HelperRoleId           string `db:"helper_role_id,size:255"`
+	HelperRoleThxesNeeded  int    `db:"helper_role_thxes_needed"`
+	MessageGiveawayWinners int    `db:"message_giveaway_winners,default:0"`
 }
 
 func (repo *ServerRepo) GetServerConfigForGuild(ctx context.Context, guildId string) (ServerConfig, error) {
 	var serverConfig ServerConfig
-	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed FROM server_configs WHERE guild_id = ?", guildId)
+	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed, message_giveaway_winners FROM server_configs WHERE guild_id = ?", guildId)
 	if err != nil {
 		return ServerConfig{}, err
 	}
@@ -69,4 +70,13 @@ func (repo *ServerRepo) GetMainChannelForGuild(ctx context.Context, guildId stri
 		return "", err
 	}
 	return str, nil
+}
+
+func (repo *ServerRepo) GetGuildsWithMessageGiveawaysEnabled(ctx context.Context) ([]string, error) {
+	var guilds []string
+	_, err := repo.mysql.WithContext(ctx).Select(&guilds, "SELECT guild_id FROM server_configs WHERE message_giveaway_winners > 0")
+	if err != nil {
+		return nil, err
+	}
+	return guilds, nil
 }

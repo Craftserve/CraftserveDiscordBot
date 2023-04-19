@@ -16,7 +16,7 @@ type CsrvbotCommand struct {
 	Description              string
 	DMPermission             bool
 	DefaultMemberPermissions int64
-	ThxMinValue              float64
+	Zero                     float64
 	GiveawayHours            string
 	ServerRepo               repos.ServerRepo
 	GiveawayRepo             repos.GiveawayRepo
@@ -32,7 +32,7 @@ func NewCsrvbotCommand(giveawayHours string, serverRepo *repos.ServerRepo, givea
 		Description:              "Komendy konfiguracyjne i administracyjne",
 		DMPermission:             false,
 		DefaultMemberPermissions: discordgo.PermissionManageMessages,
-		ThxMinValue:              0.0,
+		Zero:                     0.0,
 		GiveawayHours:            giveawayHours,
 		ServerRepo:               *serverRepo,
 		GiveawayRepo:             *giveawayRepo,
@@ -122,7 +122,21 @@ func (h CsrvbotCommand) Register(s *discordgo.Session) {
 								Name:        "amount",
 								Description: "Ilość wymaganych thx do uzyskania roli helpera",
 								Required:    true,
-								MinValue:    &h.ThxMinValue,
+								MinValue:    &h.Zero,
+							},
+						},
+					},
+					{
+						Name:        "winnercount",
+						Description: "Ilość wybieranych zwycięzców w giveawayu z wiadomości",
+						Type:        discordgo.ApplicationCommandOptionSubCommand,
+						Options: []*discordgo.ApplicationCommandOption{
+							{
+								Type:        discordgo.ApplicationCommandOptionInteger,
+								Name:        "amount",
+								Description: "Ilość wybieranych zwycięzców w giveawayu z wiadomości",
+								Required:    true,
+								MinValue:    &h.Zero,
 							},
 						},
 					},
@@ -146,6 +160,24 @@ func (h CsrvbotCommand) Register(s *discordgo.Session) {
 				Name:        "start",
 				Description: "Rozstrzyga obecny giveaway",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
+				Options: []*discordgo.ApplicationCommandOption{
+					{
+						Type:        discordgo.ApplicationCommandOptionString,
+						Name:        "type",
+						Description: "Typ giveawaya",
+						Required:    true,
+						Choices: []*discordgo.ApplicationCommandOptionChoice{
+							{
+								Name:  "thx-giveaway",
+								Value: "thx",
+							},
+							{
+								Name:  "message-giveaway",
+								Value: "message",
+							},
+						},
+					},
+				},
 			},
 			{
 				Name:        "blacklist",
@@ -249,10 +281,14 @@ func (h CsrvbotCommand) handleSettings(ctx context.Context, s *discordgo.Session
 		h.handleHelperRoleSet(ctx, s, i)
 	case "helperthxamount":
 		h.handleHelperThxAmountSet(ctx, s, i)
+	case "winnercount":
+		h.handleWinnerCountSet(ctx, s, i)
 	}
 }
 
 func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	giveawayType := i.ApplicationCommandData().Options[0].Options[0].StringValue()
+
 	guild, err := s.Guild(i.GuildID)
 	if err != nil {
 		log.Println("handleStart s.Guild(" + i.GuildID + ")")
@@ -262,7 +298,21 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		}
 	}
 
-	h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
+	switch giveawayType {
+	case "thx":
+		go h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
+	case "message":
+		serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+		if err != nil {
+			log.Printf("(%s) Could not get server config: %s", i.GuildID, err)
+			return
+		}
+		if serverConfig.MessageGiveawayWinners == 0 {
+			discord.RespondWithMessage(s, i, "Nie ustawiono liczby zwycięzców")
+			return
+		}
+		go h.GiveawayService.FinishMessageGiveaway(ctx, s, guild.ID)
+	}
 	discord.RespondWithMessage(s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
 
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
@@ -529,7 +579,7 @@ func (h CsrvbotCommand) handleHelperThxAmountSet(ctx context.Context, s *discord
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
 		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
-		discord.RespondWithMessage(s, i, "Nie udało się ustawić roli")
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić ilości thx")
 		return
 	}
 	serverConfig.HelperRoleThxesNeeded = int(amount)
@@ -541,5 +591,25 @@ func (h CsrvbotCommand) handleHelperThxAmountSet(ctx context.Context, s *discord
 	}
 	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " set helper thx amount to " + strconv.FormatUint(amount, 10))
 	discord.RespondWithMessage(s, i, "Ustawiono ilość thx potrzebną do uzyskania rangi helpera na "+strconv.FormatUint(amount, 10))
+	h.HelperService.CheckHelpers(ctx, s, i.GuildID)
+}
+
+func (h CsrvbotCommand) handleWinnerCountSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	amount := i.ApplicationCommandData().Options[0].Options[0].Options[0].UintValue()
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić ilości wybieranych osób")
+		return
+	}
+	serverConfig.MessageGiveawayWinners = int(amount)
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.Printf("(%s) handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig %v", i.GuildID, err)
+		discord.RespondWithMessage(s, i, "Nie udało się ustawić ilości wybieranych osób")
+		return
+	}
+	log.Println("(" + i.GuildID + ") " + i.Member.User.Username + " set winnercount to " + strconv.FormatUint(amount, 10))
+	discord.RespondWithMessage(s, i, "Ustawiono ilość wybieranych osób w giveawayu z wiadomości na "+strconv.FormatUint(amount, 10))
 	h.HelperService.CheckHelpers(ctx, s, i.GuildID)
 }
