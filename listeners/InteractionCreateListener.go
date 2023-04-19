@@ -152,6 +152,16 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			return
 		}
 
+		giveawayEnded, err := h.GiveawayRepo.IsGiveawayEnded(ctx, participant.GiveawayId)
+		if err != nil {
+			log.Printf("(%s) handleAcceptDeclineButtons#h.GiveawayRepo.IsGiveawayEnded: %v", i.GuildID, err)
+			return
+		}
+		if giveawayEnded {
+			discord.RespondWithEphemeralMessage(s, i, "Giveaway już się zakończył!")
+			return
+		}
+
 		thxNotification, notificationErr := h.GiveawayRepo.GetThxNotification(ctx, i.Message.ID)
 		if notificationErr != nil && !errors.Is(notificationErr, sql.ErrNoRows) {
 			log.Printf("Could not get thx notification for message %s", i.Message.ID)

@@ -291,6 +291,15 @@ func (repo *GiveawayRepo) HasWonGiveawayByMessageId(ctx context.Context, message
 	return ret > 0, nil
 }
 
+func (repo *GiveawayRepo) IsGiveawayEnded(ctx context.Context, giveawayId int) (bool, error) {
+	ret, err := repo.mysql.WithContext(ctx).SelectInt("SELECT count(*) FROM giveaways WHERE id = ? AND end_time IS NOT NULL", giveawayId)
+	if err != nil {
+		return false, err
+	}
+
+	return ret > 0, nil
+}
+
 func (repo *GiveawayRepo) GetCodeForInfoMessage(ctx context.Context, infoMessageId string) (string, error) {
 	var code string
 	err := repo.mysql.WithContext(ctx).SelectOne(&code, "SELECT code FROM giveaways WHERE info_message_id = ?", infoMessageId)
