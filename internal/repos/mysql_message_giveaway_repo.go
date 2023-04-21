@@ -97,3 +97,18 @@ func (repo *MessageGiveawayRepo) InsertMessageGiveawayWinner(ctx context.Context
 	}
 	return nil
 }
+
+func (repo *MessageGiveawayRepo) HasWonGiveawayByMessageId(ctx context.Context, infoMessageId, userId string) (bool, error) {
+	ret, err := repo.mysql.WithContext(ctx).SelectInt("SELECT count(*) from message_giveaways, message_giveaway_winners WHERE info_message_id=? AND user_id=? AND message_giveaways.id = message_giveaway_winners.message_giveaway_id;", infoMessageId, userId)
+	if err != nil {
+		return false, err
+	}
+
+	return ret > 0, nil
+}
+
+func (repo *MessageGiveawayRepo) GetCodesForInfoMessage(ctx context.Context, messageId string) ([]string, error) {
+	var codes []string
+	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways, message_giveaway_winners WHERE info_message_id=? AND message_giveaways.id = message_giveaway_winners.message_giveaway_id;", messageId)
+	return codes, err
+}

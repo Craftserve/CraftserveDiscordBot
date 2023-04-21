@@ -98,7 +98,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 					&discordgo.Button{
 						Label:    "Kliknij tutaj, aby wyświetlić kod",
 						Style:    discordgo.SuccessButton,
-						CustomID: "winnercode",
+						CustomID: "thxwinnercode",
 						Emoji: discordgo.ComponentEmoji{
 							Name: "🎉",
 						},
@@ -207,7 +207,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		log.Printf("(%s) finishMessageGiveaway#messageGiveawayRepo.GetUsersWithMessagesFromLastDays: %v", guildId, err)
 		return
 	}
-	log.Printf("(%s) Participants: %v", guildId, participants)
 
 	if len(participants) == 0 {
 		_, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był aktywny.")
@@ -277,7 +276,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 					&discordgo.Button{
 						Label:    "Kliknij tutaj, aby wyświetlić kod",
 						Style:    discordgo.SuccessButton,
-						CustomID: "winnercode",
+						CustomID: "msgwinnercode",
 						Emoji: discordgo.ComponentEmoji{
 							Name: "🎉",
 						},
