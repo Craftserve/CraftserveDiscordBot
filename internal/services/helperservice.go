@@ -35,50 +35,39 @@ func (h *HelperService) CheckHelpers(ctx context.Context, session *discordgo.Ses
 		return
 	}
 
-	members := discord.GetAllMembers(session, guildId)
-
 	helpers, err := h.GiveawayRepo.GetParticipantsWithThxAmount(ctx, guildId, serverConfig.HelperRoleThxesNeeded)
 	if err != nil {
 		log.Printf("(%s) checkHelpers#GiveawayRepo.GetParticipantsWithThxAmount: %v", guildId, err)
 		return
 	}
 
-	for _, member := range members {
-		shouldHaveRole := false
-		for _, helper := range helpers {
-			isHelperBlacklisted, err := h.UserRepo.IsUserHelperBlacklisted(ctx, member.User.ID, guildId)
-			if err != nil {
-				log.Printf("(%s) checkHelpers#UserRepo.IsUserHelperBlacklisted: %v", guildId, err)
-				continue
-			}
-			if isHelperBlacklisted {
-				shouldHaveRole = false
-				break
-			}
-			if helper.UserId == member.User.ID {
-				shouldHaveRole = true
-				break
-			}
+	for _, helper := range helpers {
+		isHelperBlacklisted, err := h.UserRepo.IsUserHelperBlacklisted(ctx, helper.UserId, guildId)
+		if err != nil {
+			log.Printf("(%s) checkHelpers#UserRepo.IsUserHelperBlacklisted: %v", guildId, err)
+			continue
+		}
+		member, err := session.GuildMember(guildId, helper.UserId)
+		if err != nil {
+			log.Printf("(%s) checkHelpers#session.GuildMember: %v", guildId, err)
+			continue
 		}
 		hasRole := discord.HasRoleById(member, serverConfig.HelperRoleId)
-		if shouldHaveRole {
-			if hasRole {
-				continue
-			}
-			log.Printf("(%s) Adding helper role to %s (%s)", guildId, member.User.Username, member.User.ID)
-			err = session.GuildMemberRoleAdd(guildId, member.User.ID, serverConfig.HelperRoleId)
+		if !hasRole && !isHelperBlacklisted {
+			log.Printf("(%s) Adding helper role to %s (%s)", guildId, member.User.Username, helper.UserId)
+			err = session.GuildMemberRoleAdd(guildId, helper.UserId, serverConfig.HelperRoleId)
 			if err != nil {
 				log.Printf("(%s) checkHelpers#session.GuildMemberRoleAdd: %v", guildId, err)
 			}
-		} else {
-			if !hasRole {
-				continue
-			}
-			log.Printf("(%s) Removing helper role from %s (%s)", guildId, member.User.Username, member.User.ID)
-			err = session.GuildMemberRoleRemove(guildId, member.User.ID, serverConfig.HelperRoleId)
+			continue
+		}
+		if isHelperBlacklisted && hasRole {
+			log.Printf("(%s) Removing helper role from %s (%s)", guildId, member.User.Username, helper.UserId)
+			err = session.GuildMemberRoleRemove(guildId, helper.UserId, serverConfig.HelperRoleId)
 			if err != nil {
 				log.Printf("(%s) checkHelpers#session.GuildMemberRoleRemove: %v", guildId, err)
 			}
+			continue
 		}
 	}
 }
@@ -113,16 +102,6 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		return
 	}
 	hasRole := discord.HasRoleById(member, serverConfig.HelperRoleId)
-	if !hasHelperAmount {
-		if hasRole {
-			log.Printf("(%s) Removing helper role from %s (%s)", guildId, member.User.Username, member.User.ID)
-			err = session.GuildMemberRoleRemove(guildId, memberId, serverConfig.HelperRoleId)
-			if err != nil {
-				log.Printf("(%s) checkHelper#session.GuildMemberRoleRemove: %v", guildId, err)
-			}
-		}
-		return
-	}
 
 	if isHelperBlacklisted && hasRole {
 		log.Printf("(%s) Removing helper role from %s (%s)", guildId, member.User.Username, member.User.ID)
@@ -132,7 +111,7 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		}
 		return
 	}
-	if hasRole || isHelperBlacklisted {
+	if hasRole || isHelperBlacklisted || !hasHelperAmount {
 		return
 	}
 	log.Printf("(%s) Adding helper role to %s (%s)", guildId, member.User.Username, member.User.ID)
