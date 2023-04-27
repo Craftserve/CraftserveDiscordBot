@@ -9,6 +9,7 @@ import (
 
 type MessageGiveawayRepo struct {
 	mysql *gorp.DbMap
+	tx    *gorp.Transaction
 }
 
 func NewMessageGiveawayRepo(mysql *gorp.DbMap) *MessageGiveawayRepo {
@@ -42,12 +43,35 @@ type DailyUserMessages struct {
 	Count   int    `db:"count"`
 }
 
+func (repo *MessageGiveawayRepo) WithTx(ctx context.Context, tx *gorp.Transaction) (*MessageGiveawayRepo, *gorp.Transaction, error) {
+	if tx == nil {
+		var err error
+		tx, err = repo.mysql.Begin()
+		if err != nil {
+			return repo, nil, err
+		}
+
+		tx = tx.WithContext(ctx).(*gorp.Transaction)
+	}
+
+	newRepo := *repo
+	newRepo.tx = tx
+
+	return &newRepo, tx, nil
+}
+
 func (repo *MessageGiveawayRepo) InsertMessageGiveaway(ctx context.Context, guildId string) error {
 	giveaway := &MessageGiveaway{
 		StartTime: time.Now(),
 		GuildId:   guildId,
 	}
-	err := repo.mysql.WithContext(ctx).Insert(giveaway)
+	sqlExecutor := repo.mysql.WithContext(ctx)
+
+	if repo.tx != nil {
+		sqlExecutor = repo.tx
+	}
+
+	err := sqlExecutor.Insert(giveaway)
 	if err != nil {
 		return err
 	}
@@ -56,7 +80,13 @@ func (repo *MessageGiveawayRepo) InsertMessageGiveaway(ctx context.Context, guil
 
 func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId string) (MessageGiveaway, error) {
 	var giveaway MessageGiveaway
-	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, start_time, guild_id, info_message_id FROM message_giveaways WHERE guild_id = ? AND info_message_id IS NULL", guildId)
+	sqlExecutor := repo.mysql.WithContext(ctx)
+
+	if repo.tx != nil {
+		sqlExecutor = repo.tx
+	}
+
+	err := sqlExecutor.SelectOne(&giveaway, "SELECT id, start_time, guild_id, info_message_id FROM message_giveaways WHERE guild_id = ? AND info_message_id IS NULL", guildId)
 	if err != nil {
 		return MessageGiveaway{}, err
 	}
@@ -91,7 +121,13 @@ func (repo *MessageGiveawayRepo) InsertMessageGiveawayWinner(ctx context.Context
 		UserId:            userId,
 		Code:              code,
 	}
-	err := repo.mysql.WithContext(ctx).Insert(winner)
+	sqlExecutor := repo.mysql.WithContext(ctx)
+
+	if repo.tx != nil {
+		sqlExecutor = repo.tx
+	}
+
+	err := sqlExecutor.Insert(winner)
 	if err != nil {
 		return err
 	}

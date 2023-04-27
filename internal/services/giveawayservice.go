@@ -217,13 +217,20 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		return
 	}
 
-	err = h.MessageGiveawayRepo.InsertMessageGiveaway(ctx, guildId)
+	messageGiveawayRepoTx, tx, err := h.MessageGiveawayRepo.WithTx(ctx, nil)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.InsertMessageGiveaway: %v", guildId, err)
+		log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.WithTx: %v", guildId, err)
+		return
+	}
+	defer tx.Rollback()
+
+	err = messageGiveawayRepoTx.InsertMessageGiveaway(ctx, guildId)
+	if err != nil {
+		log.Printf("(%s) finishMessageGiveaway#messageGiveawayRepoTx.InsertMessageGiveaway: %v", guildId, err)
 		return
 	}
 
-	giveaway, err := h.MessageGiveawayRepo.GetMessageGiveaway(ctx, guildId)
+	giveaway, err := messageGiveawayRepoTx.GetMessageGiveaway(ctx, guildId)
 	if err != nil {
 		log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.GetMessageGiveaway: %v", guildId, err)
 		return
@@ -238,20 +245,20 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		member, err := session.GuildMember(guildId, winnerId)
 		if err != nil {
 			log.Printf("(%s) finishMessageGiveaway#session.GuildMember: %v", guildId, err)
-			return
+			continue
 		}
 		winnerIds[i] = winnerId
 		winnerNames[i] = member.User.Username
 		code, err := h.CsrvClient.GetCSRVCode()
 		if err != nil {
 			log.Printf("(%s) finishMessageGiveaway#csrvClient.GetCSRVCode: %v", guildId, err)
-			return
+			continue
 		}
 
-		err = h.MessageGiveawayRepo.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
+		err = messageGiveawayRepoTx.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
 		if err != nil {
 			log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.InsertMessageGiveawayWinner: %v", guildId, err)
-			return
+			continue
 		}
 
 		dmEmbed := discord.ConstructWinnerEmbed(code)
@@ -265,6 +272,10 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 			log.Printf("(%s) finishMessageGiveaway#session.ChannelMessageSendEmbed: %v", guildId, err)
 		}
 
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("(%s) finishMessageGiveaway#tx.Commit: %v", guildId, err)
 	}
 
 	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(winnerNames)
