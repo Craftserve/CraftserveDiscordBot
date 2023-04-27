@@ -148,3 +148,12 @@ func (repo *MessageGiveawayRepo) GetCodesForInfoMessage(ctx context.Context, mes
 	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways, message_giveaway_winners WHERE info_message_id=? AND message_giveaways.id = message_giveaway_winners.message_giveaway_id;", messageId)
 	return codes, err
 }
+
+func (repo *MessageGiveawayRepo) GetLastCodesForUser(ctx context.Context, userId string, limit int) ([]string, error) {
+	var codes []string
+	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaway_winners WHERE user_id = ? ORDER BY id DESC LIMIT ?", userId, limit)
+	if err != nil {
+		return nil, err
+	}
+	return codes, nil
+}
