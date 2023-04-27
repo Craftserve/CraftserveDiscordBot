@@ -98,6 +98,7 @@ func ConstructWinnerEmbed(code string) *discordgo.MessageEmbed {
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
 		Description: "Gratulacje! W loterii wygrałeś darmowy kod na serwer w CraftServe! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok.",
+		Color:       0x234d20,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name: "KOD", Value: code,
@@ -108,16 +109,29 @@ func ConstructWinnerEmbed(code string) *discordgo.MessageEmbed {
 }
 
 func ConstructMessageWinnerEmbed(codes []string) *discordgo.MessageEmbed {
+	var description string
+	var author string
+	var name string
+	if len(codes) > 1 {
+		description = "Gratulacje! W loterii wygrałeś darmowe kody na serwer w CraftServe! Możesz je użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kody są ważne około rok."
+		author = "Wygrałeś kody na serwer diamond!"
+		name = "KODY"
+	} else {
+		description = "Gratulacje! W loterii wygrałeś darmowy kod na serwer w CraftServe! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok."
+		author = "Wygrałeś kod na serwer diamond!"
+		name = "KOD"
+	}
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     "https://craftserve.pl",
-			Name:    "Wygrałeś kod na serwer diamond!",
+			Name:    author,
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
-		Description: "Gratulacje! W loterii wygrałeś darmowy kod na serwer w CraftServe! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok.",
+		Color:       0x234d20,
+		Description: description,
 		Fields: []*discordgo.MessageEmbedField{
 			{
-				Name: "KODY", Value: strings.Join(codes, "\n"),
+				Name: name, Value: strings.Join(codes, "\n"),
 			},
 		},
 	}
@@ -131,19 +145,28 @@ func ConstructChannelWinnerEmbed(username string) *discordgo.MessageEmbed {
 			Name:    "Wyniki giveaway!",
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
+		Color:       0x234d20,
 		Description: username + " wygrał kod. Gratulacje!",
 	}
 	return embed
 }
 
 func ConstructChannelMessageWinnerEmbed(usernames []string) *discordgo.MessageEmbed {
+	var description string
+	if len(usernames) > 1 {
+		description = "W loterii za aktywność wygraliście kody na serwer w CraftServe!"
+		description += "\n\n" + strings.Join(usernames, "\n")
+	} else {
+		description = "W loterii za aktywność " + usernames[0] + " wygrał kod na serwer w CraftServe. Gratulacje!"
+	}
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     "https://craftserve.pl",
 			Name:    "Wyniki giveaway!",
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
-		Description: strings.Join(usernames, ", ") + " wygrali kody. Gratulacje!",
+		Color:       0x234d20,
+		Description: description,
 	}
 	return embed
 }
