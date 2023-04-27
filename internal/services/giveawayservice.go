@@ -244,7 +244,16 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		winnerId := participants[rand.Intn(len(participants))]
 		member, err := session.GuildMember(guildId, winnerId)
 		if err != nil {
+			var memberIndex int
+			for j, p := range participants {
+				if p == winnerId {
+					memberIndex = j
+					break
+				}
+			}
 			log.Printf("(%s) finishMessageGiveaway#session.GuildMember: %v", guildId, err)
+			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
+			i--
 			continue
 		}
 		winnerIds[i] = winnerId
@@ -252,12 +261,14 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		code, err := h.CsrvClient.GetCSRVCode()
 		if err != nil {
 			log.Printf("(%s) finishMessageGiveaway#csrvClient.GetCSRVCode: %v", guildId, err)
+			i--
 			continue
 		}
 
 		err = messageGiveawayRepoTx.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
 		if err != nil {
 			log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.InsertMessageGiveawayWinner: %v", guildId, err)
+			i--
 			continue
 		}
 
