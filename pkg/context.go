@@ -1,7 +1,12 @@
 package pkg
 
-import "context"
+import (
+	"context"
+	"csrvbot/pkg/logger"
+)
 
 func CreateContext() context.Context {
-	return context.Background()
+	ctx := context.Background()
+	ctx = logger.ContextWithLogger(ctx, logger.GetLoggerFromContext(ctx))
+	return ctx
 }

@@ -10,7 +10,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/poy/onpar v1.0.0 // indirect
 	github.com/robfig/cron v1.2.0
-	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
 )
 

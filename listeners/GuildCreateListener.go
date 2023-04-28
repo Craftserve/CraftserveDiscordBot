@@ -6,9 +6,10 @@ import (
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"database/sql"
 	"github.com/bwmarrin/discordgo"
-	"log"
+	"github.com/sirupsen/logrus"
 )
 
 type GuildCreateListener struct {
@@ -31,7 +32,11 @@ func NewGuildCreateListener(giveawayRepo *repos.GiveawayRepo, serverRepo *repos.
 
 func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCreate) {
 	ctx := pkg.CreateContext()
-	log.Println("Registered guild (" + g.Name + "#" + g.ID + ")")
+	log := logger.GetLoggerFromContext(ctx)
+	log.WithFields(logrus.Fields{
+		"guild":      g.Guild.ID,
+		"guild_name": g.Guild.Name,
+	}).Info("Registered guild")
 
 	h.createConfigurationIfNotExists(ctx, s, g.Guild.ID)
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, g.Guild)
@@ -40,6 +45,7 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 }
 
 func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context, session *discordgo.Session, guildID string) {
+	log := logger.GetLoggerFromContext(ctx)
 	var giveawayChannel string
 	channels, _ := session.GuildChannels(guildID)
 	for _, channel := range channels {
@@ -60,17 +66,20 @@ func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context,
 	_, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildID)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.WithGuild(guildID).Debug("Creating server config")
 			err = h.ServerRepo.InsertServerConfig(ctx, guildID, giveawayChannel, adminRole)
 			if err != nil {
-				log.Println("("+guildID+") Could not create server config", err)
+				log.WithGuild(guildID).WithError(err).Error("Could not create server config", err)
 			}
 		} else {
-			log.Println("("+guildID+") Could not get server config", err)
+			log.WithGuild(guildID).WithError(err).Error("Could not get server config")
 		}
 	}
 }
 
 func (h GuildCreateListener) updateAllMembersSavedRoles(ctx context.Context, session *discordgo.Session, guildId string) {
+	log := logger.GetLoggerFromContext(ctx)
+	log.WithGuild(guildId).Debug("Updating all members saved roles")
 	guildMembers := discord.GetAllMembers(session, guildId)
 	for _, member := range guildMembers {
 		h.UserRepo.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)

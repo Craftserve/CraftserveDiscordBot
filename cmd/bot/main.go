@@ -7,10 +7,10 @@ import (
 	"csrvbot/listeners"
 	"csrvbot/pkg"
 	"csrvbot/pkg/database"
+	"csrvbot/pkg/logger"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"github.com/robfig/cron"
-	"log"
 	"os"
 )
 
@@ -26,11 +26,16 @@ type Config struct {
 var BotConfig Config
 
 func init() {
+	ctx := pkg.CreateContext()
+	logger.ConfigureLogger()
+	log := logger.GetLoggerFromContext(ctx)
+	log.Debug("Opening config.json")
 	configFile, err := os.Open("config.json")
 	if err != nil {
 		log.Panic(err)
 	}
 
+	log.Debug("Decoding config.json")
 	err = json.NewDecoder(configFile).Decode(&BotConfig)
 	if err != nil {
 		log.Panic("init#Decoder.Decode(&BotConfig)", err)
@@ -39,16 +44,18 @@ func init() {
 
 func main() {
 	ctx := pkg.CreateContext()
+	log := logger.GetLoggerFromContext(ctx)
 	db := database.NewProvider()
 
-	err := db.InitMySQLDatabases(BotConfig.MysqlConfig)
+	log.Debug("Initializing MySQL databases")
+	err := db.InitMySQLDatabases(ctx, BotConfig.MysqlConfig)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	dbMap, err := db.GetMySQLDatabase("main")
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
@@ -58,7 +65,7 @@ func main() {
 
 	err = db.CreateTablesIfNotExists()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret)
@@ -68,7 +75,7 @@ func main() {
 
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
@@ -92,10 +99,10 @@ func main() {
 
 	err = session.Open()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
-	log.Println("Bot logged in as", session.State.User)
+	log.WithField("username", session.State.User).Info("Bot logged in")
 
 	giveawayCommand.Register(session)
 	thxCommand.Register(session)
@@ -115,9 +122,9 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	<-stop
-	log.Println("Shutting down...")
+	log.Info("Shutting down...")
 	err = session.Close()
 	if err != nil {
-		log.Panicln("Could not close session", err)
+		log.Panic("Could not close session", err)
 	}
 }

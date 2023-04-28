@@ -1,11 +1,12 @@
 package database
 
 import (
+	"context"
+	"csrvbot/pkg/logger"
 	"database/sql"
 	"fmt"
 	"github.com/go-gorp/gorp"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
 )
 
 type Provider struct {
@@ -26,13 +27,15 @@ type MySQLConfiguration struct {
 	Database string `json:"database"`
 }
 
-func (p *Provider) InitMySQLDatabases(databases []MySQLConfiguration) error {
+func (p *Provider) InitMySQLDatabases(ctx context.Context, databases []MySQLConfiguration) error {
+	log := logger.GetLoggerFromContext(ctx)
 	for _, database := range databases {
 		databaseUrl := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=True",
 			database.Username,
 			database.Password,
 			database.Host,
 			database.Database)
+		log.WithField("dbname", database.Name).Debug("Connecting to database")
 
 		connection, err := sql.Open("mysql", databaseUrl)
 		if err != nil {
@@ -43,7 +46,7 @@ func (p *Provider) InitMySQLDatabases(databases []MySQLConfiguration) error {
 			return fmt.Errorf("could not ping database %s %w", database.Name, err)
 		}
 
-		log.Println("Connected to database", database.Name)
+		log.WithField("dbname", database.Name).Info("Connected to database")
 
 		p.databases[database.Name] = &gorp.DbMap{Db: connection, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8MB4"}}
 
