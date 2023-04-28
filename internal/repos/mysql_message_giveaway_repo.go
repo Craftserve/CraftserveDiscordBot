@@ -82,11 +82,13 @@ func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId
 	var giveaway MessageGiveaway
 	sqlExecutor := repo.mysql.WithContext(ctx)
 
+	query := "SELECT id, start_time, guild_id, info_message_id FROM message_giveaways WHERE guild_id = ? AND info_message_id IS NULL"
 	if repo.tx != nil {
 		sqlExecutor = repo.tx
+		query += " FOR UPDATE"
 	}
 
-	err := sqlExecutor.SelectOne(&giveaway, "SELECT id, start_time, guild_id, info_message_id FROM message_giveaways WHERE guild_id = ? AND info_message_id IS NULL", guildId)
+	err := sqlExecutor.SelectOne(&giveaway, query, guildId)
 	if err != nil {
 		return MessageGiveaway{}, err
 	}

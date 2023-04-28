@@ -74,8 +74,8 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		}
 		return
 	}
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	winner := participants[rand.Intn(len(participants))]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	winner := participants[r.Intn(len(participants))]
 
 	member, err := s.GuildMember(guildId, winner.UserId)
 	if err != nil {
@@ -240,8 +240,8 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 	winnerNames := make([]string, serverConfig.MessageGiveawayWinners)
 
 	for i := 0; i < serverConfig.MessageGiveawayWinners; i++ {
-		rand.New(rand.NewSource(time.Now().UnixNano()))
-		winnerId := participants[rand.Intn(len(participants))]
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		winnerId := participants[r.Intn(len(participants))]
 		member, err := session.GuildMember(guildId, winnerId)
 		if err != nil {
 			var memberIndex int
