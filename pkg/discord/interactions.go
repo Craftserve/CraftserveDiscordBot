@@ -1,29 +1,33 @@
 package discord
 
 import (
+	"context"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
-func RespondLoading(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func RespondLoading(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.WithError(err).Error("Could not respond to interaction")
 	}
 }
 
-func EditResponseMessage(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+func EditResponseMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	log := logger.GetLoggerFromContext(ctx)
 	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &message,
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not edit interaction ("+i.ID+")", err)
+		log.WithError(err).Error("Could not edit interaction")
 	}
 }
 
-func RespondWithMessage(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+func RespondWithMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	log := logger.GetLoggerFromContext(ctx)
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -31,11 +35,12 @@ func RespondWithMessage(s *discordgo.Session, i *discordgo.InteractionCreate, me
 		},
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.WithError(err).Error("Could not respond to interaction")
 	}
 }
 
-func RespondWithEphemeralMessage(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+func RespondWithEphemeralMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	log := logger.GetLoggerFromContext(ctx)
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -44,6 +49,6 @@ func RespondWithEphemeralMessage(s *discordgo.Session, i *discordgo.InteractionC
 		},
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.WithError(err).Error("Could not respond to interaction")
 	}
 }

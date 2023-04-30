@@ -76,3 +76,15 @@ func (s MyLogger) WithMessage(messageId string) MyLogger {
 
 	return s
 }
+
+func (s MyLogger) WithCommand(commandName string) MyLogger {
+	s.Entry = s.Entry.WithField("command", commandName)
+
+	return s
+}
+
+func (s MyLogger) WithSubcommand(subcommandName string) MyLogger {
+	s.Entry = s.Entry.WithField("subcommand", subcommandName)
+
+	return s
+}

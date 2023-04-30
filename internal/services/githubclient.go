@@ -1,8 +1,9 @@
 package services
 
 import (
+	"context"
+	"csrvbot/pkg/logger"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -21,7 +22,8 @@ type ContentsResponse []struct {
 	Name string `json:"name"`
 }
 
-func (g *GithubClient) GetDocs(prefix string) ([]string, error) {
+func (g *GithubClient) GetDocs(ctx context.Context, prefix string) ([]string, error) {
+	log := logger.GetLoggerFromContext(ctx)
 	req, err := http.NewRequest("GET", "https://api.github.com/repos/craftserve/docs/contents", nil)
 	if err != nil {
 		return nil, err
@@ -29,7 +31,6 @@ func (g *GithubClient) GetDocs(prefix string) ([]string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("getDocs http.DefaultClient.Do(req) " + err.Error())
 		return nil, err
 	}
 
@@ -40,7 +41,7 @@ func (g *GithubClient) GetDocs(prefix string) ([]string, error) {
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		log.Println("getDocs resp.Body.Close() ", err)
+		log.WithError(err).Error("getDocs resp.Body.Close()")
 	}
 
 	var docs []string
@@ -73,7 +74,6 @@ func (g *GithubClient) GetDocExists(name string) (bool, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("getDocExists http.DefaultClient.Do(req) " + err.Error())
 		return false, err
 	}
 

@@ -3,8 +3,8 @@ package listeners
 import (
 	"csrvbot/internal/repos"
 	"csrvbot/pkg"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type MessageCreateListener struct {
@@ -19,6 +19,7 @@ func NewMessageCreateListener(messageGiveawayRepo *repos.MessageGiveawayRepo) Me
 
 func (h MessageCreateListener) Handle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	ctx := pkg.CreateContext()
+	log := logger.GetLoggerFromContext(ctx).WithMessage(m.ID).WithUser(m.Author.ID).WithGuild(m.GuildID)
 
 	if m.Author.Bot {
 		return
@@ -26,7 +27,7 @@ func (h MessageCreateListener) Handle(s *discordgo.Session, m *discordgo.Message
 
 	err := h.MessageGiveawayRepo.UpdateUserDailyMessageCount(ctx, m.Author.ID, m.GuildID)
 	if err != nil {
-		log.Printf("(%s) Could not update user daily message count: %v", m.GuildID, err)
+		log.WithError(err).Error("Could not update user daily message count")
 		return
 	}
 }

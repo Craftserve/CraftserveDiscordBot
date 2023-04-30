@@ -1,13 +1,13 @@
 package commands
 
 import (
+	"context"
 	"csrvbot/internal/repos"
-	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"database/sql"
 	"errors"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type ThxCommand struct {
@@ -32,7 +32,9 @@ func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, s
 	}
 }
 
-func (h ThxCommand) Register(s *discordgo.Session) {
+func (h ThxCommand) Register(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+	log.Debug("Registering command")
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		Description:  h.Description,
@@ -47,33 +49,35 @@ func (h ThxCommand) Register(s *discordgo.Session) {
 		},
 	})
 	if err != nil {
-		log.Println("Could not register command", err)
+		log.WithError(err).Error("Could not register command")
 	}
 
+	log.Debug("Registering message context command")
 	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		DMPermission: &h.DMPermission,
 		Type:         discordgo.MessageApplicationCommand,
 	})
 	if err != nil {
-		log.Println("Could not register context command", err)
+		log.WithError(err).Error("Could not register message context command")
 	}
 
+	log.Debug("Registering user context command")
 	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		DMPermission: &h.DMPermission,
 		Type:         discordgo.UserApplicationCommand,
 	})
 	if err != nil {
-		log.Println("Could not register context command", err)
+		log.WithError(err).Error("Could not register user context command")
 	}
 }
 
-func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	ctx := pkg.CreateContext()
+func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	guild, err := s.Guild(i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") handleThxCommand#session.Guild", err)
+		log.WithError(err).Error("handleThxCommand#session.Guild")
 		return
 	}
 	var selectedUser *discordgo.User
@@ -84,7 +88,7 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		} else if len(data.Resolved.Users) != 0 {
 			selectedUser = data.Resolved.Users[data.TargetID]
 		} else {
-			log.Printf("(%s) handleThxCommand# could not get selectedUser", i.GuildID)
+			log.WithError(errors.New("could not get selectedUser")).Error("handleThxCommand#")
 			return
 		}
 	} else {
@@ -92,30 +96,30 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 	}
 	author := i.Member.User
 	if author.ID == selectedUser.ID {
-		discord.RespondWithMessage(s, i, "Nie można dziękować sobie!")
+		discord.RespondWithMessage(ctx, s, i, "Nie można dziękować sobie!")
 		return
 	}
 	if selectedUser.Bot {
-		discord.RespondWithMessage(s, i, "Nie można dziękować botom!")
+		discord.RespondWithMessage(ctx, s, i, "Nie można dziękować botom!")
 		return
 	}
 	isUserBlacklisted, err := h.UserRepo.IsUserBlacklisted(ctx, selectedUser.ID, i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") handleThxCommand#UserRepo.IsUserBlacklisted", err)
+		log.WithError(err).Error("handleThxCommand#UserRepo.IsUserBlacklisted")
 		return
 	}
 	if isUserBlacklisted {
-		discord.RespondWithMessage(s, i, "Ten użytkownik jest na czarnej liście i nie może brać udziału :(")
+		discord.RespondWithMessage(ctx, s, i, "Ten użytkownik jest na czarnej liście i nie może brać udziału :(")
 		return
 	}
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not get giveaway", err)
+		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 	participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not get participants", err)
+		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetParticipantNamesForGiveaway")
 		return
 	}
 
@@ -150,58 +154,58 @@ func (h ThxCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 		},
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.WithError(err).Error("handleThxCommand#session.InteractionRespond")
 		return
 	}
 
 	response, err := s.InteractionResponse(i.Interaction)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not fetch a response of interaction ("+i.ID+")", err)
+		log.WithError(err).Error("handleThxCommand#session.InteractionResponse")
 		return
 	}
 
 	err = h.GiveawayRepo.InsertParticipant(ctx, giveaway.Id, i.GuildID, guild.Name, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not insert participant", err)
+		log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertParticipant")
 		str := "Coś poszło nie tak przy dodawaniu podziękowania :("
 		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &str,
 		})
 		if err != nil {
-			log.Println("("+i.GuildID+") Could not edit interaction response", err)
+			log.WithError(err).Error("handleThxCommand#session.InteractionResponseEdit")
 		}
 		return
 	}
-	log.Println("(" + i.GuildID + ") " + author.Username + " has thanked " + selectedUser.Username)
+	log.Infof("%s has thanked %s", author.Username, selectedUser.Username)
 
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Printf("Could not get server config for guild %s", i.GuildID)
+		log.WithError(err).Error("handleThxCommand#ServerRepo.GetServerConfigForGuild")
 		return
 	}
 
 	thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, response.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Printf("Could not get thx notification for message %s", response.ID)
+		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetThxNotification")
 		return
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
 		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
 		if err != nil {
-			log.Printf("(%s) Could not notify thx on thx info channel", i.GuildID)
+			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return
 		}
 
 		err = h.GiveawayRepo.InsertThxNotification(ctx, response.ID, notificationMessageId)
 		if err != nil {
-			log.Printf("(%s) Could not insert thx notification", i.GuildID)
+			log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertThxNotification")
 			return
 		}
 	} else {
 		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
 		if err != nil {
-			log.Printf("(%s) Could not notify thx on thx info channel", i.GuildID)
+			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return
 		}
 	}

@@ -1,14 +1,16 @@
 package discord
 
 import (
+	"context"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
-func HasPermission(session *discordgo.Session, member *discordgo.Member, guildId string, permission int64) bool {
+func HasPermission(ctx context.Context, session *discordgo.Session, member *discordgo.Member, guildId string, permission int64) bool {
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId).WithUser(member.User.ID)
 	g, err := session.Guild(guildId)
 	if err != nil {
-		log.Println("("+guildId+") "+"hasPermisson#session.Guild", err)
+		log.WithError(err).Error("hasPermisson#session.Guild")
 		return false
 	}
 	if g.OwnerID == member.User.ID {
@@ -37,8 +39,8 @@ func HasRoleById(member *discordgo.Member, roleId string) bool {
 	return false
 }
 
-func HasAdminPermissions(session *discordgo.Session, member *discordgo.Member, adminRoleId, guildId string) bool {
-	if HasPermission(session, member, guildId, 8) {
+func HasAdminPermissions(ctx context.Context, session *discordgo.Session, member *discordgo.Member, adminRoleId, guildId string) bool {
+	if HasPermission(ctx, session, member, guildId, 8) {
 		return true
 	}
 	if HasRoleById(member, adminRoleId) {

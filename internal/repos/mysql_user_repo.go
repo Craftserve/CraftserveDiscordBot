@@ -3,7 +3,6 @@ package repos
 import (
 	"context"
 	"github.com/go-gorp/gorp"
-	"log"
 )
 
 type UserRepo struct {
@@ -72,46 +71,6 @@ func (repo *UserRepo) IsUserHelperBlacklisted(ctx context.Context, userId string
 		return false, err
 	}
 	return ret > 0, nil
-}
-
-func (repo *UserRepo) UpdateMemberSavedRoles(ctx context.Context, memberRoles []string, memberId, guildId string) { //todo: how to properly return errors from this?
-	savedRoles, err := repo.GetRolesForMember(ctx, guildId, memberId)
-	if err != nil {
-		log.Println("("+guildId+") "+"updateMemberSavedRoles Error while getting saved roles", err)
-		return
-	}
-	var savedRolesIds []string
-	for _, role := range savedRoles {
-		savedRolesIds = append(savedRolesIds, role.RoleId)
-	}
-
-	for _, memberRole := range memberRoles {
-		found := false
-		for i, savedRole := range savedRolesIds {
-			if savedRole == memberRole {
-				found = true
-				savedRolesIds[i] = ""
-				break
-			}
-		}
-		if !found {
-			err = repo.AddRoleForMember(ctx, guildId, memberId, memberRole)
-			if err != nil {
-				log.Println("("+guildId+") Error while saving new role info", err)
-				continue
-			}
-		}
-	}
-
-	for _, savedRole := range savedRolesIds {
-		if savedRole != "" {
-			err = repo.RemoveRoleForMember(ctx, guildId, memberId, savedRole)
-			if err != nil {
-				log.Println("("+guildId+") "+"Error while deleting info about member role", err)
-				continue
-			}
-		}
-	}
 }
 
 func (repo *UserRepo) IsUserBlacklisted(ctx context.Context, userId string, guildId string) (bool, error) {

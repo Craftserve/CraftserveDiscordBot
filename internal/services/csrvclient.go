@@ -1,8 +1,9 @@
 package services
 
 import (
+	"context"
+	"csrvbot/pkg/logger"
 	"encoding/json"
-	"log"
 	"net/http"
 )
 
@@ -18,7 +19,8 @@ type VoucherResponse struct {
 	Code string `json:"code"`
 }
 
-func (c *CsrvClient) GetCSRVCode() (string, error) {
+func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
+	log := logger.GetLoggerFromContext(ctx)
 	req, err := http.NewRequest("POST", "https://craftserve.pl/api/generate_voucher", nil)
 	if err != nil {
 		return "", err
@@ -27,7 +29,6 @@ func (c *CsrvClient) GetCSRVCode() (string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("getCSRVCode http.DefaultClient.Do(req) " + err.Error())
 		return "", err
 	}
 
@@ -38,7 +39,7 @@ func (c *CsrvClient) GetCSRVCode() (string, error) {
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		log.Println("getCSRVCode resp.Body.Close() ", err)
+		log.WithError(err).Error("getCSRVCode resp.Body.Close()")
 	}
 	return code.Code, nil
 }

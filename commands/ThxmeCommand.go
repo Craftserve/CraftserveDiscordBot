@@ -1,12 +1,13 @@
 package commands
 
 import (
+	"context"
 	"csrvbot/internal/repos"
-	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
+	"errors"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type ThxmeCommand struct {
@@ -31,7 +32,9 @@ func NewThxmeCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo,
 	}
 }
 
-func (h ThxmeCommand) Register(s *discordgo.Session) {
+func (h ThxmeCommand) Register(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+	log.Debug("Registering command")
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		Description:  h.Description,
@@ -46,33 +49,35 @@ func (h ThxmeCommand) Register(s *discordgo.Session) {
 		},
 	})
 	if err != nil {
-		log.Println("Could not register command", err)
+		log.WithError(err).Error("Could not register command")
 	}
 
+	log.Debug("Registering message context command")
 	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		DMPermission: &h.DMPermission,
 		Type:         discordgo.MessageApplicationCommand,
 	})
 	if err != nil {
-		log.Println("Could not register context command", err)
+		log.WithError(err).Error("Could not register message context command")
 	}
 
+	log.Debug("Registering user context command")
 	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		DMPermission: &h.DMPermission,
 		Type:         discordgo.UserApplicationCommand,
 	})
 	if err != nil {
-		log.Println("Could not register context command", err)
+		log.WithError(err).Error("Could not register user context command")
 	}
 }
 
-func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	ctx := pkg.CreateContext()
+func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	guild, err := s.Guild(i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") handleThxmeCommand#session.Guild", err)
+		log.WithError(err).Error("Could not get guild")
 		return
 	}
 	var selectedUser *discordgo.User
@@ -83,7 +88,7 @@ func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		} else if len(data.Resolved.Users) != 0 {
 			selectedUser = data.Resolved.Users[data.TargetID]
 		} else {
-			log.Printf("(%s) handleThxCommand# could not get selectedUser", i.GuildID)
+			log.WithError(errors.New("could not get selectedUser")).Error("handleThxmeCommand")
 			return
 		}
 	} else {
@@ -91,20 +96,20 @@ func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 	author := i.Member.User
 	if author.ID == selectedUser.ID {
-		discord.RespondWithMessage(s, i, "Nie można poprosić o podziękowanie samego siebie!")
+		discord.RespondWithMessage(ctx, s, i, "Nie można poprosić o podziękowanie samego siebie!")
 		return
 	}
 	if selectedUser.Bot {
-		discord.RespondWithMessage(s, i, "Nie można prosić o podziękowanie bota!")
+		discord.RespondWithMessage(ctx, s, i, "Nie można prosić o podziękowanie bota!")
 		return
 	}
 	isUserBlacklisted, err := h.UserRepo.IsUserBlacklisted(ctx, author.ID, i.GuildID)
 	if err != nil {
-		log.Println("("+i.GuildID+") handleThxmeCommand#UserRepo.IsUserBlacklisted", err)
+		log.WithError(err).Error("handleThxmeCommand#UserRepo.IsUserBlacklisted")
 		return
 	}
 	if isUserBlacklisted {
-		discord.RespondWithMessage(s, i, "Nie możesz poprosić o podziękowanie, gdyż jesteś na czarnej liście!")
+		discord.RespondWithMessage(ctx, s, i, "Nie możesz poprosić o podziękowanie, gdyż jesteś na czarnej liście!")
 		return
 	}
 
@@ -137,25 +142,25 @@ func (h ThxmeCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		},
 	})
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not respond to interaction ("+i.ID+")", err)
+		log.WithError(err).Error("handleThxmeCommand#InteractionRespond")
 		return
 	}
 
 	response, err := s.InteractionResponse(i.Interaction)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not fetch a response of interaction ("+i.ID+")", err)
+		log.WithError(err).Error("handleThxmeCommand#InteractionResponse")
 		return
 	}
 
 	err = h.GiveawayRepo.InsertParticipantCandidate(ctx, i.GuildID, guild.Name, author.ID, author.Username, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
 	if err != nil {
-		log.Println("("+i.GuildID+") Could not insert participant candidate", err)
+		log.WithError(err).Error("handleThxmeCommand#GiveawayRepo.InsertParticipantCandidate")
 		str := "Coś poszło nie tak przy dodawaniu kandydata do podziękowania :("
 		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &str,
 		})
 		return
 	}
-	log.Println("(" + i.GuildID + ") " + author.Username + " has requested thx from " + selectedUser.Username)
+	log.Infof("%s has requested thx from %s", author.Username, selectedUser.Username)
 
 }

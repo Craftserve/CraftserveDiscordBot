@@ -1,10 +1,11 @@
 package commands
 
 import (
+	"context"
 	"csrvbot/internal/services"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type DocCommand struct {
@@ -23,7 +24,9 @@ func NewDocCommand(githubClient *services.GithubClient) DocCommand {
 	}
 }
 
-func (h DocCommand) Register(s *discordgo.Session) {
+func (h DocCommand) Register(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+	log.Debug("Registering command")
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		Description:  h.Description,
@@ -45,22 +48,23 @@ func (h DocCommand) Register(s *discordgo.Session) {
 		},
 	})
 	if err != nil {
-		log.Println("Could not register command", err)
+		log.WithError(err).Error("Could not register command")
 	}
 }
 
-func (h DocCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (h DocCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	docName := i.ApplicationCommandData().Options[0].StringValue()
 
 	docExists, err := h.GithubClient.GetDocExists(docName)
 	if err != nil {
-		log.Println("Could not get doc", err)
-		discord.RespondWithMessage(s, i, "Wystąpił błąd podczas wyszukiwania poradnika")
+		log.WithError(err).Error("Could not get doc")
+		discord.RespondWithMessage(ctx, s, i, "Wystąpił błąd podczas wyszukiwania poradnika")
 		return
 	}
 
 	if !docExists {
-		discord.RespondWithMessage(s, i, "Taki poradnik nie istnieje")
+		discord.RespondWithMessage(ctx, s, i, "Taki poradnik nie istnieje")
 		return
 	}
 
@@ -68,16 +72,17 @@ func (h DocCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate)
 	if len(i.ApplicationCommandData().Options) == 2 {
 		anchor = "#" + i.ApplicationCommandData().Options[1].StringValue()
 	}
-	discord.RespondWithMessage(s, i, "<https://github.com/craftserve/docs/blob/master/"+docName+".md"+anchor+">")
+	discord.RespondWithMessage(ctx, s, i, "<https://github.com/craftserve/docs/blob/master/"+docName+".md"+anchor+">")
 }
 
-func (h DocCommand) HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (h DocCommand) HandleAutocomplete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	data := i.ApplicationCommandData()
 	var choices []*discordgo.ApplicationCommandOptionChoice
 
-	docs, err := h.GithubClient.GetDocs(data.Options[0].StringValue())
+	docs, err := h.GithubClient.GetDocs(ctx, data.Options[0].StringValue())
 	if err != nil {
-		log.Println("Could not get docs", err)
+		log.WithError(err).Error("Could not get docs")
 		return
 	}
 
@@ -95,6 +100,6 @@ func (h DocCommand) HandleAutocomplete(s *discordgo.Session, i *discordgo.Intera
 		},
 	})
 	if err != nil {
-		log.Println("Could not respond to interaction", err)
+		log.WithError(err).Error("Could not respond to interaction")
 	}
 }

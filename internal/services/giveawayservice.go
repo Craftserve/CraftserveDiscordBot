@@ -4,10 +4,10 @@ import (
 	"context"
 	"csrvbot/internal/repos"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"database/sql"
 	"errors"
 	"github.com/bwmarrin/discordgo"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -30,46 +30,48 @@ func NewGiveawayService(csrvClient *CsrvClient, serverRepo *repos.ServerRepo, gi
 }
 
 func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Session, guildId string) {
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) Could not get giveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 	_, err = s.Guild(guildId)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#session.Guild: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#s.Guild")
 		return
 	}
 
 	giveawayChannelId, err := h.ServerRepo.GetMainChannelForGuild(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#serverRepo.GetMainChannelForGuild: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#h.ServerRepo.GetMainChannelForGuild")
 		return
 	}
 
 	participants, err := h.GiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#giveawayRepo.GetParticipantsForGiveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetParticipantsForGiveaway")
 	}
 
 	if participants == nil || len(participants) == 0 {
 		message, err := s.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w loterii.")
 		if err != nil {
-			log.Printf("(%s) finishGiveaway#session.ChannelMessageSend: %v", guildId, err)
+			log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSend")
 		}
 		err = h.GiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID, "", "", "")
 		if err != nil {
-			log.Printf("(%s) finishGiveaway#giveawayRepo.UpdateGiveaway: %v", guildId, err)
+			log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
 		}
-		log.Printf("(%s) Giveaway ended without any participants.", guildId)
+		log.Infof("Giveaway ended without any participants.")
 		return
 	}
 
-	code, err := h.CsrvClient.GetCSRVCode()
+	code, err := h.CsrvClient.GetCSRVCode(ctx)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#csrvClient.GetCSRVCode: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#h.CsrvClient.GetCSRVCode")
 		_, err = s.ChannelMessageSend(giveawayChannelId, "Błąd API Craftserve, nie udało się pobrać kodu!")
 		if err != nil {
+			log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSend")
 			return
 		}
 		return
@@ -79,13 +81,13 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 
 	member, err := s.GuildMember(guildId, winner.UserId)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#session.GuildMember: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#s.GuildMember")
 		return
 	}
 	dmEmbed := discord.ConstructWinnerEmbed(code)
 	dm, err := s.UserChannelCreate(winner.UserId)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#session.UserChannelCreate: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#s.UserChannelCreate")
 	}
 	_, err = s.ChannelMessageSendEmbed(dm.ID, dmEmbed)
 
@@ -109,24 +111,25 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	})
 
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#session.ChannelMessageSendComplex: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSendComplex")
 	}
 
 	err = h.GiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID, code, winner.UserId, member.User.Username)
 	if err != nil {
-		log.Printf("(%s) finishGiveaway#giveawayRepo.UpdateGiveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
 	}
-	log.Printf("(%s) Giveaway ended with a winner: %s", guildId, member.User.Username)
+	log.Infof("Giveaway ended with a winner: %s", member.User.Username)
 
 }
 
 func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx)
 	giveaways, err := h.GiveawayRepo.GetUnfinishedGiveaways(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return
 		}
-		log.Printf("finishGiveaways#giveawayRepo.GetUnfinishedGiveaways: %v", err)
+		log.WithError(err).Error("FinishGiveaways#h.GiveawayRepo.GetUnfinishedGiveaways")
 		return
 	}
 	for _, giveaway := range giveaways {
@@ -140,27 +143,28 @@ func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Sess
 }
 
 func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guild.ID)
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
 	if err != nil {
-		log.Printf("(%s) createMissingGiveaways#ServerRepo.GetServerConfigForGuild: %v", guild.ID, err)
+		log.WithError(err).Error("CreateMissingGiveaways#h.ServerRepo.GetServerConfigForGuild")
 		return
 	}
 	giveawayChannelId := serverConfig.MainChannel
 	_, err = s.Channel(giveawayChannelId)
 	if err != nil {
-		log.Printf("(%s) createMissingGiveaways#Session.Channel: %v", guild.ID, err)
+		log.WithError(err).Error("CreateMissingGiveaways#s.Channel")
 		return
 	}
 	_, err = h.GiveawayRepo.GetGiveawayForGuild(ctx, guild.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Printf("(%s) createMissingGiveaways#giveawayRepo.GetGiveawayForGuild: %v", guild.ID, err)
+		log.WithError(err).Error("CreateMissingGiveaways#h.GiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
 		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
 		if err != nil {
-			log.Printf("(%s) createMissingGiveaways#giveawayRepo.InsertGiveaway: %v", guild.ID, err)
+			log.WithError(err).Error("CreateMissingGiveaways#h.GiveawayRepo.InsertGiveaway")
 			return
 		}
 	}
@@ -168,16 +172,17 @@ func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discord
 }
 
 func (h *GiveawayService) FinishMessageGiveaways(ctx context.Context, session *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx)
 	guildIds, err := h.ServerRepo.GetGuildsWithMessageGiveawaysEnabled(ctx)
 	if err != nil {
-		log.Printf("finishMessageGiveaways#serverRepo.GetGuildsWithMessageGiveawaysEnabled: %v", err)
+		log.WithError(err).Error("FinishMessageGiveaways#serverRepo.GetGuildsWithMessageGiveawaysEnabled")
 		return
 	}
 
 	for _, guildId := range guildIds {
 		_, err := session.Guild(guildId)
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaways#session.Guild: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaways#session.Guild")
 			continue
 		}
 		h.FinishMessageGiveaway(ctx, session, guildId)
@@ -186,9 +191,10 @@ func (h *GiveawayService) FinishMessageGiveaways(ctx context.Context, session *d
 }
 
 func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *discordgo.Session, guildId string) {
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#serverRepo.GetServerConfigForGuild: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#serverRepo.GetServerConfigForGuild")
 		return
 	}
 
@@ -198,12 +204,13 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 
 	giveawayChannelId, err := h.ServerRepo.GetMainChannelForGuild(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#serverRepo.GetMainChannelForGuild: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#serverRepo.GetMainChannelForGuild")
 		return
 	}
 
 	participants, err := h.MessageGiveawayRepo.GetUsersWithMessagesFromLastDays(ctx, 30, guildId)
 	if err != nil {
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.GetUsersWithMessagesFromLastDays")
 		log.Printf("(%s) finishMessageGiveaway#messageGiveawayRepo.GetUsersWithMessagesFromLastDays: %v", guildId, err)
 		return
 	}
@@ -211,28 +218,28 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 	if len(participants) == 0 {
 		_, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był aktywny.")
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaway#session.ChannelMessageSend: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSend")
 		}
-		log.Printf("(%s) Message giveaway ended without any participants.", guildId)
+		log.Infof("Message giveaway ended without any participants.")
 		return
 	}
 
 	messageGiveawayRepoTx, tx, err := h.MessageGiveawayRepo.WithTx(ctx, nil)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.WithTx: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.WithTx")
 		return
 	}
 	defer tx.Rollback()
 
 	err = messageGiveawayRepoTx.InsertMessageGiveaway(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#messageGiveawayRepoTx.InsertMessageGiveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.InsertMessageGiveaway")
 		return
 	}
 
 	giveaway, err := messageGiveawayRepoTx.GetMessageGiveaway(ctx, guildId)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.GetMessageGiveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.GetMessageGiveaway")
 		return
 	}
 
@@ -251,23 +258,23 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 					break
 				}
 			}
-			log.Printf("(%s) finishMessageGiveaway#session.GuildMember: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#session.GuildMember")
 			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
 			i--
 			continue
 		}
 		winnerIds[i] = winnerId
 		winnerNames[i] = member.User.Username
-		code, err := h.CsrvClient.GetCSRVCode()
+		code, err := h.CsrvClient.GetCSRVCode(ctx)
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaway#csrvClient.GetCSRVCode: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#csrvClient.GetCSRVCode")
 			i--
 			continue
 		}
 
 		err = messageGiveawayRepoTx.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaway#MessageGiveawayRepo.InsertMessageGiveawayWinner: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.InsertMessageGiveawayWinner")
 			i--
 			continue
 		}
@@ -275,18 +282,19 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		dmEmbed := discord.ConstructWinnerEmbed(code)
 		dm, err := session.UserChannelCreate(winnerId)
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaway#session.UserChannelCreate: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#session.UserChannelCreate")
 			continue
 		}
 		_, err = session.ChannelMessageSendEmbed(dm.ID, dmEmbed)
 		if err != nil {
-			log.Printf("(%s) finishMessageGiveaway#session.ChannelMessageSendEmbed: %v", guildId, err)
+			log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendEmbed")
 		}
 
 	}
 	err = tx.Commit()
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#tx.Commit: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#tx.Commit")
+		return
 	}
 
 	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(winnerNames)
@@ -308,13 +316,13 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		},
 	})
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#session.ChannelMessageSendComplex: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendComplex")
 	}
 
 	err = h.MessageGiveawayRepo.UpdateMessageGiveaway(ctx, &giveaway, message.ID)
 	if err != nil {
-		log.Printf("(%s) finishMessageGiveaway#giveawayRepo.UpdateGiveaway: %v", guildId, err)
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.UpdateMessageGiveaway")
 	}
-	log.Printf("(%s) Message giveaway ended with a winners: %s", guildId, strings.Join(winnerNames, ", "))
+	log.Infof("Message giveaway ended with a winners: %s", strings.Join(winnerNames, ", "))
 
 }

@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"context"
 	"csrvbot/internal/repos"
-	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type GiveawayCommand struct {
@@ -26,27 +26,29 @@ func NewGiveawayCommand(giveawayRepo *repos.GiveawayRepo, giveawayHours string) 
 	}
 }
 
-func (h GiveawayCommand) Register(s *discordgo.Session) {
+func (h GiveawayCommand) Register(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+	log.Debug("Registering command")
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		Description:  h.Description,
 		DMPermission: &h.DMPermission,
 	})
 	if err != nil {
-		log.Println("Could not register command", err)
+		log.WithError(err).Error("Could not register command")
 	}
 }
 
-func (h GiveawayCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	ctx := pkg.CreateContext()
+func (h GiveawayCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
 	if err != nil {
-		log.Printf("(%s) Could not get giveaway: %s", i.GuildID, err)
+		log.WithError(err).Error("Could not get giveaway")
 		return
 	}
 	participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
 	if err != nil {
-		log.Printf("(%s) Could not get participants: %s", i.GuildID, err)
+		log.WithError(err).Error("Could not get participants")
 		return
 	}
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -59,7 +61,7 @@ func (h GiveawayCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCr
 		},
 	})
 	if err != nil {
-		log.Printf("(%s) Could not respond to interaction (%s): %v", i.GuildID, i.ID, err)
+		log.WithError(err).Error("Could not respond to interaction")
 		return
 	}
 }

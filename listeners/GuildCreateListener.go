@@ -13,20 +13,20 @@ import (
 )
 
 type GuildCreateListener struct {
-	GiveawayRepo    repos.GiveawayRepo
-	ServerRepo      repos.ServerRepo
-	UserRepo        repos.UserRepo
-	GiveawayService services.GiveawayService
-	HelperService   services.HelperService
+	GiveawayRepo     repos.GiveawayRepo
+	ServerRepo       repos.ServerRepo
+	GiveawayService  services.GiveawayService
+	HelperService    services.HelperService
+	SavedRoleService services.SavedroleService
 }
 
-func NewGuildCreateListener(giveawayRepo *repos.GiveawayRepo, serverRepo *repos.ServerRepo, userRepo *repos.UserRepo, giveawayService *services.GiveawayService, helperService *services.HelperService) GuildCreateListener {
+func NewGuildCreateListener(giveawayRepo *repos.GiveawayRepo, serverRepo *repos.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
 	return GuildCreateListener{
-		GiveawayRepo:    *giveawayRepo,
-		ServerRepo:      *serverRepo,
-		UserRepo:        *userRepo,
-		GiveawayService: *giveawayService,
-		HelperService:   *helperService,
+		GiveawayRepo:     *giveawayRepo,
+		ServerRepo:       *serverRepo,
+		GiveawayService:  *giveawayService,
+		HelperService:    *helperService,
+		SavedRoleService: *savedRoleService,
 	}
 }
 
@@ -45,7 +45,7 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 }
 
 func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context, session *discordgo.Session, guildID string) {
-	log := logger.GetLoggerFromContext(ctx)
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildID)
 	var giveawayChannel string
 	channels, _ := session.GuildChannels(guildID)
 	for _, channel := range channels {
@@ -66,22 +66,22 @@ func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context,
 	_, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.WithGuild(guildID).Debug("Creating server config")
+			log.Debug("Creating server config")
 			err = h.ServerRepo.InsertServerConfig(ctx, guildID, giveawayChannel, adminRole)
 			if err != nil {
-				log.WithGuild(guildID).WithError(err).Error("Could not create server config", err)
+				log.WithError(err).Error("Could not create server config", err)
 			}
 		} else {
-			log.WithGuild(guildID).WithError(err).Error("Could not get server config")
+			log.WithError(err).Error("Could not get server config")
 		}
 	}
 }
 
 func (h GuildCreateListener) updateAllMembersSavedRoles(ctx context.Context, session *discordgo.Session, guildId string) {
-	log := logger.GetLoggerFromContext(ctx)
-	log.WithGuild(guildId).Debug("Updating all members saved roles")
-	guildMembers := discord.GetAllMembers(session, guildId)
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
+	log.Debug("Updating all members saved roles")
+	guildMembers := discord.GetAllMembers(ctx, session, guildId)
 	for _, member := range guildMembers {
-		h.UserRepo.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)
+		h.SavedRoleService.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)
 	}
 }

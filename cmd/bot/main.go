@@ -72,6 +72,7 @@ func main() {
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo, messageGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
+	var savedRoleService = services.NewSavedRoleService(userRepo)
 
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
 	if err != nil {
@@ -87,9 +88,9 @@ func main() {
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo, messageGiveawayRepo)
 	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, giveawayRepo, messageGiveawayRepo, serverRepo, helperService)
-	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, userRepo, giveawayService, helperService)
+	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
-	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo)
+	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
 	var messageCreateListener = listeners.NewMessageCreateListener(messageGiveawayRepo)
 	session.AddHandler(interactionCreateListener.Handle)
 	session.AddHandler(guildCreateListener.Handle)
@@ -104,12 +105,12 @@ func main() {
 
 	log.WithField("username", session.State.User).Info("Bot logged in")
 
-	giveawayCommand.Register(session)
-	thxCommand.Register(session)
-	thxmeCommand.Register(session)
-	csrvbotCommand.Register(session)
-	docCommand.Register(session)
-	resendCommand.Register(session)
+	giveawayCommand.Register(ctx, session)
+	thxCommand.Register(ctx, session)
+	thxmeCommand.Register(ctx, session)
+	csrvbotCommand.Register(ctx, session)
+	docCommand.Register(ctx, session)
+	resendCommand.Register(ctx, session)
 
 	c := cron.New()
 	_ = c.AddFunc(BotConfig.ThxGiveawayCron, func() {

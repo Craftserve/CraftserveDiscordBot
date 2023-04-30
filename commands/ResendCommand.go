@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"context"
 	"csrvbot/internal/repos"
-	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
+	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
-	"log"
 )
 
 type ResendCommand struct {
@@ -26,27 +26,29 @@ func NewResendCommand(giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *rep
 	}
 }
 
-func (h ResendCommand) Register(s *discordgo.Session) {
+func (h ResendCommand) Register(ctx context.Context, s *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+	log.Debug("Registering command")
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", &discordgo.ApplicationCommand{
 		Name:         h.Name,
 		Description:  h.Description,
 		DMPermission: &h.DMPermission,
 	})
 	if err != nil {
-		log.Println("Could not register command", err)
+		log.WithError(err).Error("Could not register command")
 	}
 }
 
-func (h ResendCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	ctx := pkg.CreateContext()
+func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 	thxCodes, err := h.GiveawayRepo.GetLastCodesForUser(ctx, i.Member.User.ID, 10)
 	if err != nil {
-		log.Println("ResendCommand#h.GiveawayRepo.GetLastCodesForUser", err)
+		log.WithError(err).Error("ResendCommand#h.GiveawayRepo.GetLastCodesForUser")
 		return
 	}
 	msgCodes, err := h.MessageGiveawayRepo.GetLastCodesForUser(ctx, i.Member.User.ID, 10)
 	if err != nil {
-		log.Println("ResendCommand#h.MessageGiveawayRepo.GetLastCodesForUser", err)
+		log.WithError(err).Error("ResendCommand#h.MessageGiveawayRepo.GetLastCodesForUser")
 		return
 	}
 	thxEmbed := discord.ConstructResendEmbed(thxCodes)
@@ -54,7 +56,7 @@ func (h ResendCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 
 	dm, err := s.UserChannelCreate(i.Member.User.ID)
 	if err != nil {
-		log.Println("handleCsrvbotCommand#UserChannelCreate", err)
+		log.WithError(err).Error("ResendCommand#s.UserChannelCreate")
 		return
 	}
 
@@ -71,7 +73,7 @@ func (h ResendCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 			},
 		})
 		if err != nil {
-			log.Println("ResendCommand#session.InteractionRespond", err)
+			log.WithError(err).Error("ResendCommand#session.InteractionRespond")
 		}
 		return
 	}
@@ -84,7 +86,7 @@ func (h ResendCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 		},
 	})
 	if err != nil {
-		log.Println("ResendCommand#session.InteractionRespond", err)
+		log.WithError(err).Error("ResendCommand#session.InteractionRespond")
 		return
 	}
 

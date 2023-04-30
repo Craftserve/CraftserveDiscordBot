@@ -46,41 +46,6 @@ func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxC
 
 func (h InteractionCreateListener) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	ctx := pkg.CreateContext()
-	switch i.Type {
-	case discordgo.InteractionApplicationCommand:
-		h.handleApplicationCommands(s, i)
-	case discordgo.InteractionApplicationCommandAutocomplete:
-		h.handleApplicationCommandsAutocomplete(s, i)
-	case discordgo.InteractionMessageComponent:
-		h.handleMessageComponents(ctx, s, i)
-	}
-}
-
-func (h InteractionCreateListener) handleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	switch i.ApplicationCommandData().Name {
-	case "giveaway":
-		h.GiveawayCommand.Handle(s, i)
-	case "thx":
-		h.ThxCommand.Handle(s, i)
-	case "thxme":
-		h.ThxmeCommand.Handle(s, i)
-	case "doc":
-		h.DocCommand.Handle(s, i)
-	case "csrvbot":
-		h.CsrvbotCommand.Handle(s, i)
-	case "resend":
-		h.ResendCommand.Handle(s, i)
-	}
-}
-
-func (h InteractionCreateListener) handleApplicationCommandsAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	switch i.ApplicationCommandData().Name {
-	case "doc":
-		h.DocCommand.HandleAutocomplete(s, i)
-	}
-}
-
-func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx).WithGuild(i.GuildID)
 	if i.Member != nil {
 		log = log.WithUser(i.Member.User.ID)
@@ -88,6 +53,45 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		log = log.WithUser(i.User.ID)
 	}
 	ctx = logger.ContextWithLogger(ctx, log)
+
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		h.handleApplicationCommands(ctx, s, i)
+	case discordgo.InteractionApplicationCommandAutocomplete:
+		h.handleApplicationCommandsAutocomplete(ctx, s, i)
+	case discordgo.InteractionMessageComponent:
+		h.handleMessageComponents(ctx, s, i)
+	}
+}
+
+func (h InteractionCreateListener) handleApplicationCommands(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(i.ApplicationCommandData().Name)
+	ctx = logger.ContextWithLogger(ctx, log)
+	switch i.ApplicationCommandData().Name {
+	case "giveaway":
+		h.GiveawayCommand.Handle(ctx, s, i)
+	case "thx":
+		h.ThxCommand.Handle(ctx, s, i)
+	case "thxme":
+		h.ThxmeCommand.Handle(ctx, s, i)
+	case "doc":
+		h.DocCommand.Handle(ctx, s, i)
+	case "csrvbot":
+		h.CsrvbotCommand.Handle(ctx, s, i)
+	case "resend":
+		h.ResendCommand.Handle(ctx, s, i)
+	}
+}
+
+func (h InteractionCreateListener) handleApplicationCommandsAutocomplete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	switch i.ApplicationCommandData().Name {
+	case "doc":
+		h.DocCommand.HandleAutocomplete(ctx, s, i)
+	}
+}
+
+func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
 
 	switch i.MessageComponentData().CustomID {
 	case "thxwinnercode":
@@ -98,7 +102,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 		if !hasWon {
-			discord.RespondWithEphemeralMessage(s, i, "Nie wygrałeś tego giveawayu!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
 			return
 		}
 
@@ -128,7 +132,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 		if !hasWon {
-			discord.RespondWithEphemeralMessage(s, i, "Nie wygrałeś tego giveawayu!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
 			return
 		}
 
@@ -190,10 +194,10 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 
 	if isThxMessage {
 		log.Debug("Message is a thx message")
-		isAdmin := discord.HasAdminPermissions(s, member, serverConfig.AdminRoleId, i.GuildID)
+		isAdmin := discord.HasAdminPermissions(ctx, s, member, serverConfig.AdminRoleId, i.GuildID)
 		if !isAdmin {
 			log.Debug("User is not an admin")
-			discord.RespondWithEphemeralMessage(s, i, "Nie masz uprawnień do akceptacji!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie masz uprawnień do akceptacji!")
 			return
 		}
 
@@ -210,7 +214,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		}
 		if giveawayEnded {
 			log.Debug("Giveaway has ended")
-			discord.RespondWithEphemeralMessage(s, i, "Giveaway już się zakończył!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Giveaway już się zakończył!")
 			return
 		}
 
@@ -228,7 +232,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipant: %v", err)
 				return
 			}
-			discord.RespondWithEphemeralMessage(s, i, "Udział użytkownika został potwierdzony!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Udział użytkownika został potwierdzony!")
 			log.Infof("%s accepted %s participation in giveaway %d", member.User.Username, participant.UserName, participant.GiveawayId)
 
 			participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, participant.GiveawayId)
@@ -268,12 +272,13 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			log.Debug("Checking if helper role should be given to participant...")
 			h.HelperService.CheckHelper(ctx, s, i.GuildID, participant.UserId)
 		case "reject":
+			log.Debug("User clicked reject button, updating participant...")
 			err := h.GiveawayRepo.UpdateParticipant(ctx, &participant, member.User.ID, member.User.Username, false)
 			if err != nil {
 				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipant: %v", err)
 				return
 			}
-			discord.RespondWithEphemeralMessage(s, i, "Udział użytkownika został odrzucony!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Udział użytkownika został odrzucony!")
 			log.Infof("%s rejected %s participation in giveaway %d", member.User.Username, participant.UserName, participant.GiveawayId)
 
 			participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, participant.GiveawayId)
@@ -315,6 +320,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		}
 
 	} else if isThxmeMessage {
+		log.Debug("Message is a thxme message")
 		candidate, err := h.GiveawayRepo.GetParticipantCandidate(ctx, i.Message.ID)
 		if err != nil {
 			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipantCandidate: %v", err)
@@ -322,18 +328,20 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		}
 
 		if member.User.ID != candidate.CandidateApproverId {
-			discord.RespondWithEphemeralMessage(s, i, "Nie masz uprawnień do zmiany statusu tej prośby!")
+			log.Debug("User is not the approver of the candidate")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie masz uprawnień do zmiany statusu tej prośby!")
 			return
 		}
 
 		switch componentId {
 		case "accept":
+			log.Debug("User clicked accept button, updating participant candidate...")
 			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, true)
 			if err != nil {
 				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipantCandidate: %v", err)
 				return
 			}
-			discord.RespondWithEphemeralMessage(s, i, "Prośba o podziękowanie zaakceptowana!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Prośba o podziękowanie zaakceptowana!")
 			log.Infof("(%s) %s accepted %s request for thx", i.GuildID, member.User.Username, candidate.CandidateName)
 
 			giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
@@ -407,6 +415,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				}
 			}
 		case "reject":
+			log.Debug("User clicked reject button, updating participant candidate...")
 			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, false)
 			if err != nil {
 				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipantCandidate: %v", err)
@@ -419,7 +428,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			discord.RespondWithEphemeralMessage(s, i, "Prośba o podziękowanie odrzucona!")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Prośba o podziękowanie odrzucona!")
 			log.Infof("%s rejected %s request for thx", member.User.Username, candidate.CandidateName)
 		}
 
