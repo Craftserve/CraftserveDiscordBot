@@ -229,6 +229,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.WithTx")
 		return
 	}
+	//goland:noinspection GoUnhandledErrorResult
 	defer tx.Rollback()
 
 	err = messageGiveawayRepoTx.InsertMessageGiveaway(ctx, guildId)
@@ -268,14 +269,17 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		code, err := h.CsrvClient.GetCSRVCode(ctx)
 		if err != nil {
 			log.WithError(err).Error("FinishMessageGiveaway#csrvClient.GetCSRVCode")
-			i--
-			continue
+			_, err = session.ChannelMessageSend(giveawayChannelId, "Błąd API Craftserve, nie udało się pobrać kodu!")
+			if err != nil {
+				log.WithError(err).Error("FinishMessageGiveaway#s.ChannelMessageSend")
+				return
+			}
+			return
 		}
 
 		err = messageGiveawayRepoTx.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
 		if err != nil {
 			log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.InsertMessageGiveawayWinner")
-			i--
 			continue
 		}
 
