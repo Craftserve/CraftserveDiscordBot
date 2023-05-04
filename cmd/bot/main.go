@@ -53,6 +53,7 @@ func main() {
 		log.Panic(err)
 	}
 
+	log.Debug("Getting MySQL database")
 	dbMap, err := db.GetMySQLDatabase("main")
 	if err != nil {
 		log.Panic(err)
@@ -63,6 +64,7 @@ func main() {
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 
+	log.Debug("Creating tables...")
 	err = db.CreateTablesIfNotExists()
 	if err != nil {
 		log.Panic(err)
@@ -74,12 +76,14 @@ func main() {
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 	var savedRoleService = services.NewSavedRoleService(userRepo)
 
+	log.Debug("Initializing discordgo session")
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
+	log.Debug("Running with intents: ", session.Identify.Intents)
 
 	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.ThxGiveawayTimeString)
 	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
@@ -98,6 +102,7 @@ func main() {
 	session.AddHandler(guildMemberUpdateListener.Handle)
 	session.AddHandler(messageCreateListener.Handle)
 
+	log.Debug("Opening discordgo session")
 	err = session.Open()
 	if err != nil {
 		log.Panic(err)
@@ -105,6 +110,7 @@ func main() {
 
 	log.WithField("username", session.State.User).Info("Bot logged in")
 
+	log.Debug("Registering commands")
 	giveawayCommand.Register(ctx, session)
 	thxCommand.Register(ctx, session)
 	thxmeCommand.Register(ctx, session)
@@ -112,6 +118,7 @@ func main() {
 	docCommand.Register(ctx, session)
 	resendCommand.Register(ctx, session)
 
+	log.Debug("Creating cron jobs: ", BotConfig.ThxGiveawayCron, " and ", BotConfig.MessageGiveawayCron)
 	c := cron.New()
 	_ = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
 		giveawayService.FinishGiveaways(ctx, session)
