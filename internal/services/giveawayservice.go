@@ -31,6 +31,7 @@ func NewGiveawayService(csrvClient *CsrvClient, serverRepo *repos.ServerRepo, gi
 
 func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Session, guildId string) {
 	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
+	log.Debug("Finishing giveaway for guild")
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetGiveawayForGuild")
@@ -114,6 +115,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSendComplex")
 	}
 
+	log.Debug("Updating giveaway with winner, message and code")
 	err = h.GiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID, code, winner.UserId, member.User.Username)
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
@@ -162,6 +164,7 @@ func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discord
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
+		log.Debug("Giveaway for guild does not exist, creating...")
 		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
 		if err != nil {
 			log.WithError(err).Error("CreateMissingGiveaways#h.GiveawayRepo.InsertGiveaway")
@@ -192,6 +195,7 @@ func (h *GiveawayService) FinishMessageGiveaways(ctx context.Context, session *d
 
 func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *discordgo.Session, guildId string) {
 	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
+	log.Debug("Finishing message giveaway for guild")
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishMessageGiveaway#serverRepo.GetServerConfigForGuild")
@@ -211,7 +215,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 	participants, err := h.MessageGiveawayRepo.GetUsersWithMessagesFromLastDays(ctx, 30, guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.GetUsersWithMessagesFromLastDays")
-		log.Printf("(%s) finishMessageGiveaway#messageGiveawayRepo.GetUsersWithMessagesFromLastDays: %v", guildId, err)
 		return
 	}
 
@@ -232,6 +235,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 	//goland:noinspection GoUnhandledErrorResult
 	defer tx.Rollback()
 
+	log.Debug("Inserting message giveaway into database")
 	err = messageGiveawayRepoTx.InsertMessageGiveaway(ctx, guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.InsertMessageGiveaway")
@@ -277,6 +281,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 			return
 		}
 
+		log.Debug("Inserting message giveaway winner into database")
 		err = messageGiveawayRepoTx.InsertMessageGiveawayWinner(ctx, giveaway.Id, winnerId, code)
 		if err != nil {
 			log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.InsertMessageGiveawayWinner")
@@ -323,6 +328,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendComplex")
 	}
 
+	log.Debug("Updating message giveaway in database with message id")
 	err = h.MessageGiveawayRepo.UpdateMessageGiveaway(ctx, &giveaway, message.ID)
 	if err != nil {
 		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.UpdateMessageGiveaway")

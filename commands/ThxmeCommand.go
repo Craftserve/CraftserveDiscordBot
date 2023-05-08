@@ -96,10 +96,12 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 	}
 	author := i.Member.User
 	if author.ID == selectedUser.ID {
+		log.Debug("User and author are the same")
 		discord.RespondWithMessage(ctx, s, i, "Nie można poprosić o podziękowanie samego siebie!")
 		return
 	}
 	if selectedUser.Bot {
+		log.Debug("User is a bot")
 		discord.RespondWithMessage(ctx, s, i, "Nie można prosić o podziękowanie bota!")
 		return
 	}
@@ -109,6 +111,7 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 		return
 	}
 	if isUserBlacklisted {
+		log.Debug("Author is blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Nie możesz poprosić o podziękowanie, gdyż jesteś na czarnej liście!")
 		return
 	}
@@ -152,6 +155,7 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 		return
 	}
 
+	log.Debug("Inserting participant candidate into database")
 	err = h.GiveawayRepo.InsertParticipantCandidate(ctx, i.GuildID, guild.Name, author.ID, author.Username, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
 	if err != nil {
 		log.WithError(err).Error("handleThxmeCommand#GiveawayRepo.InsertParticipantCandidate")

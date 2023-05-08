@@ -315,6 +315,7 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 			return
 		}
 		if serverConfig.MessageGiveawayWinners == 0 {
+			log.Debug("No winners set for message giveaway")
 			discord.RespondWithMessage(ctx, s, i, "Nie ustawiono liczby zwycięzców")
 			return
 		}
@@ -341,6 +342,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 	}
 	selectedUser := i.ApplicationCommandData().Options[0].Options[0].UserValue(s)
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę usunięcia użytkownika z giveawayu")
+	log.Debug("Removing all entries from database for participant ", selectedUser.ID)
 	err = h.GiveawayRepo.RemoveAllParticipantEntries(ctx, giveaway.Id, selectedUser.ID)
 	if err != nil {
 		log.WithError(err).Error("handleDelete h.GiveawayRepo.RemoveAllParticipantEntries")
@@ -361,6 +363,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 		if participant.UserId != selectedUser.ID {
 			return
 		}
+		log.WithMessage(participant.MessageId).Debug("Updating thx embed after entry deletion for participant ", participant.UserId)
 		embed := discord.ConstructThxEmbed(participantNames, h.GiveawayHours, participant.UserId, "", "reject")
 		_, err = s.ChannelMessageEditEmbed(participant.ChannelId, participant.MessageId, embed)
 		if err != nil {
@@ -372,6 +375,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			log.WithError(err).Error("handleDelete h.GiveawayRepo.GetThxNotification")
 			return
 		}
+		log.Debug("Updating thx notification message after entry deletion for participant ", participant.UserId)
 		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, participant.MessageId, participant.UserId, "", "reject")
 		if err != nil {
 			log.WithError(err).Error("handleDelete discord.NotifyThxOnThxInfoChannel")
@@ -385,6 +389,7 @@ func (h CsrvbotCommand) handleBlacklist(ctx context.Context, s *discordgo.Sessio
 	log := logger.GetLoggerFromContext(ctx)
 	selectedUser := i.ApplicationCommandData().Options[0].Options[0].UserValue(s)
 	if selectedUser.Bot {
+		log.Debug("User is a bot")
 		discord.RespondWithMessage(ctx, s, i, "Nie możesz dodać bota do blacklisty")
 		return
 	}
@@ -394,10 +399,12 @@ func (h CsrvbotCommand) handleBlacklist(ctx context.Context, s *discordgo.Sessio
 		return
 	}
 	if isUserBlacklisted {
+		log.Debug("User is already blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Użytkownik jest już na blackliście")
 		return
 	}
 
+	log.Debug("Adding user to blacklist")
 	err = h.UserRepo.AddBlacklistForUser(ctx, selectedUser.ID, i.GuildID, i.Member.User.ID)
 	if err != nil {
 		log.WithError(err).Error("handleBlacklist h.UserRepo.AddBlacklistForUser")
@@ -418,9 +425,12 @@ func (h CsrvbotCommand) handleUnblacklist(ctx context.Context, s *discordgo.Sess
 		return
 	}
 	if !isUserBlacklisted {
+		log.Debug("User is not blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Użytkownik nie jest na blackliście")
 		return
 	}
+
+	log.Debug("Removing user from blacklist")
 	err = h.UserRepo.RemoveBlacklistForUser(ctx, selectedUser.ID, i.GuildID)
 	if err != nil {
 		log.WithError(err).Error("handleUnblacklist h.UserRepo.RemoveBlacklistForUser", err)
@@ -435,6 +445,7 @@ func (h CsrvbotCommand) handleHelperBlacklist(ctx context.Context, s *discordgo.
 	log := logger.GetLoggerFromContext(ctx)
 	selectedUser := i.ApplicationCommandData().Options[0].Options[0].UserValue(s)
 	if selectedUser.Bot {
+		log.Debug("User is a bot")
 		discord.RespondWithMessage(ctx, s, i, "Nie możesz dodać bota do helper-blacklisty")
 		return
 	}
@@ -444,10 +455,12 @@ func (h CsrvbotCommand) handleHelperBlacklist(ctx context.Context, s *discordgo.
 		return
 	}
 	if isUserHelperBlacklisted {
+		log.Debug("User is already helper-blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Użytkownik jest już na helper-blackliście")
 		return
 	}
 
+	log.Debug("Adding user to helper-blacklist")
 	err = h.UserRepo.AddHelperBlacklistForUser(ctx, selectedUser.ID, i.GuildID, i.Member.User.ID)
 	if err != nil {
 		log.WithError(err).Error("handleHelperBlacklist h.UserRepo.AddHelperBlacklistForUser", err)
@@ -470,9 +483,12 @@ func (h CsrvbotCommand) handleHelperUnblacklist(ctx context.Context, s *discordg
 		return
 	}
 	if !isUserHelperBlacklisted {
+		log.Debug("User is not helper-blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Użytkownik nie jest na helper-blackliście")
 		return
 	}
+
+	log.Debug("Removing user from helper-blacklist")
 	err = h.UserRepo.RemoveHelperBlacklistForUser(ctx, selectedUser.ID, i.GuildID)
 	if err != nil {
 		log.WithError(err).Error("handleHelperUnblacklist h.UserRepo.RemoveHelperBlacklistForUser", err)
@@ -481,6 +497,7 @@ func (h CsrvbotCommand) handleHelperUnblacklist(ctx context.Context, s *discordg
 	}
 	log.Infof("%s helper-unblacklisted %s", i.Member.User.Username, selectedUser.Username)
 	discord.RespondWithMessage(ctx, s, i, "Użytkownik został usunięty z helper-blacklisty")
+	log.Debug("Checking if user should be re-added to helpers")
 	h.HelperService.CheckHelper(ctx, s, i.GuildID, selectedUser.ID)
 }
 
@@ -499,7 +516,13 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
 		return
 	}
+	if serverConfig.ThxInfoChannel == channelId {
+		log.Debug("Giveaway channel is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Kanał do ogłoszeń giveawaya jest już ustawiony na "+channel.Mention())
+		return
+	}
 	serverConfig.MainChannel = channelId
+	log.Debug("Updating server config with new giveaway channel")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleGiveawayChannelSet h.ServerRepo.UpdateServerConfig", err)
@@ -532,7 +555,13 @@ func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordg
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
 		return
 	}
+	if serverConfig.ThxInfoChannel == channelId {
+		log.Debug("Thx info channel is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Kanał do powiadomień o thx jest już ustawiony na "+channel.Mention())
+		return
+	}
 	serverConfig.ThxInfoChannel = channelId
+	log.Debug("Updating server config with new thx info channel")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleThxInfoChannelSet h.ServerRepo.UpdateServerConfig", err)
@@ -558,7 +587,13 @@ func (h CsrvbotCommand) handleAdminRoleSet(ctx context.Context, s *discordgo.Ses
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić roli")
 		return
 	}
+	if serverConfig.AdminRoleId == roleId {
+		log.Debug("Admin role is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Rola admina jest już ustawiona na "+role.Name)
+		return
+	}
 	serverConfig.AdminRoleId = roleId
+	log.Debug("Updating server config with new admin role")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleAdminRoleSet h.ServerRepo.UpdateServerConfig", err)
@@ -584,7 +619,13 @@ func (h CsrvbotCommand) handleHelperRoleSet(ctx context.Context, s *discordgo.Se
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić roli")
 		return
 	}
+	if serverConfig.HelperRoleId == roleId {
+		log.Debug("Helper role is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Rola helpera jest już ustawiona na "+role.Name)
+		return
+	}
 	serverConfig.HelperRoleId = roleId
+	log.Debug("Updating server config with new helper role")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleHelperRoleSet h.ServerRepo.UpdateServerConfig", err)
@@ -604,7 +645,13 @@ func (h CsrvbotCommand) handleHelperThxAmountSet(ctx context.Context, s *discord
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić ilości thx")
 		return
 	}
+	if serverConfig.HelperRoleThxesNeeded == int(amount) {
+		log.Debug("Thx amount is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Ilość thx potrzebna do uzyskania rangi helpera jest już ustawiona na "+strconv.FormatUint(amount, 10))
+		return
+	}
 	serverConfig.HelperRoleThxesNeeded = int(amount)
+	log.Debug("Updating server config with new helper thx amount")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleHelperThxAmountSet h.ServerRepo.UpdateServerConfig", err)
@@ -626,7 +673,18 @@ func (h CsrvbotCommand) handleWinnerCountSet(ctx context.Context, s *discordgo.S
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić ilości wybieranych osób")
 		return
 	}
+	if amount > 10 {
+		log.Debug("Winner count is too high")
+		discord.RespondWithMessage(ctx, s, i, "Nie można ustawić ilości wybieranych osób na więcej niż 10")
+		return
+	}
+	if serverConfig.MessageGiveawayWinners == int(amount) {
+		log.Debug("Winner count is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Ilość wybieranych osób jest już ustawiona na "+strconv.FormatUint(amount, 10))
+		return
+	}
 	serverConfig.MessageGiveawayWinners = int(amount)
+	log.Debug("Updating server config with new winner count")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
 		log.WithError(err).Error("handleWinnerCountSet h.ServerRepo.UpdateServerConfig", err)

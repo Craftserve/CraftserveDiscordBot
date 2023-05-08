@@ -38,6 +38,7 @@ func (h SavedroleService) UpdateMemberSavedRoles(ctx context.Context, memberRole
 			}
 		}
 		if !found {
+			log.Debugf("Adding role %s of member %s to saved roles in database", memberRole, memberId)
 			err = h.UserRepo.AddRoleForMember(ctx, guildId, memberId, memberRole)
 			if err != nil {
 				log.WithError(err).Error("UpdateMemberSavedRoles Error while saving new role info", err)
@@ -48,6 +49,7 @@ func (h SavedroleService) UpdateMemberSavedRoles(ctx context.Context, memberRole
 
 	for _, savedRole := range savedRolesIds {
 		if savedRole != "" {
+			log.Debugf("Removing role %s of member %s from saved roles in database", savedRole, memberId)
 			err = h.UserRepo.RemoveRoleForMember(ctx, guildId, memberId, savedRole)
 			if err != nil {
 				log.WithError(err).Error("UpdateMemberSavedRoles Error while deleting info about member role", err)

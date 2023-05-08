@@ -53,9 +53,10 @@ func (h DocCommand) Register(ctx context.Context, s *discordgo.Session) {
 }
 
 func (h DocCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	log := logger.GetLoggerFromContext(ctx)
 	docName := i.ApplicationCommandData().Options[0].StringValue()
+	log := logger.GetLoggerFromContext(ctx).WithField("docName", docName)
 
+	log.Debug("Checking if doc exists")
 	docExists, err := h.GithubClient.GetDocExists(docName)
 	if err != nil {
 		log.WithError(err).Error("Could not get doc")
@@ -64,6 +65,7 @@ func (h DocCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 
 	if !docExists {
+		log.Debug("Doc does not exist")
 		discord.RespondWithMessage(ctx, s, i, "Taki poradnik nie istnieje")
 		return
 	}
@@ -80,6 +82,7 @@ func (h DocCommand) HandleAutocomplete(ctx context.Context, s *discordgo.Session
 	data := i.ApplicationCommandData()
 	var choices []*discordgo.ApplicationCommandOptionChoice
 
+	log.Debug("Getting matching docs for " + data.Options[0].StringValue())
 	docs, err := h.GithubClient.GetDocs(ctx, data.Options[0].StringValue())
 	if err != nil {
 		log.WithError(err).Error("Could not get docs")

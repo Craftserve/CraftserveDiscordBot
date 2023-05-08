@@ -10,5 +10,6 @@
   "thx_giveaway_time_string": "6:00, 12:00, 18:00",
   "message_giveaway_cron_line": "0 0 6,12,18 * *",
   "system_token": "token bota",
-  "csrv_secret": "secret api od kodow"
+  "csrv_secret": "secret api od kodow",
+  "register_commands": true
 }

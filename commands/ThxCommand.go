@@ -96,10 +96,12 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 	author := i.Member.User
 	if author.ID == selectedUser.ID {
+		log.Debug("User and author are the same")
 		discord.RespondWithMessage(ctx, s, i, "Nie można dziękować sobie!")
 		return
 	}
 	if selectedUser.Bot {
+		log.Debug("User is a bot")
 		discord.RespondWithMessage(ctx, s, i, "Nie można dziękować botom!")
 		return
 	}
@@ -109,6 +111,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 	if isUserBlacklisted {
+		log.Debug("User is blacklisted")
 		discord.RespondWithMessage(ctx, s, i, "Ten użytkownik jest na czarnej liście i nie może brać udziału :(")
 		return
 	}
@@ -164,6 +167,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 
+	log.Debug("Inserting participant into database")
 	err = h.GiveawayRepo.InsertParticipant(ctx, giveaway.Id, i.GuildID, guild.Name, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
 	if err != nil {
 		log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertParticipant")
@@ -197,6 +201,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 			return
 		}
 
+		log.Debug("Inserting notification into database")
 		err = h.GiveawayRepo.InsertThxNotification(ctx, response.ID, notificationMessageId)
 		if err != nil {
 			log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertThxNotification")

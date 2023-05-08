@@ -53,6 +53,7 @@ func (h InteractionCreateListener) Handle(s *discordgo.Session, i *discordgo.Int
 		log = log.WithUser(i.User.ID)
 	}
 	ctx = logger.ContextWithLogger(ctx, log)
+	log.Debug("InteractionCreate event received, type: ", i.Type)
 
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
@@ -67,6 +68,7 @@ func (h InteractionCreateListener) Handle(s *discordgo.Session, i *discordgo.Int
 func (h InteractionCreateListener) handleApplicationCommands(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx).WithCommand(i.ApplicationCommandData().Name)
 	ctx = logger.ContextWithLogger(ctx, log)
+	log.Debug("Command received")
 	switch i.ApplicationCommandData().Name {
 	case "giveaway":
 		h.GiveawayCommand.Handle(ctx, s, i)
@@ -102,6 +104,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 		if !hasWon {
+			log.Debug("User has not won the giveaway")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
 			return
 		}
@@ -132,6 +135,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 		if !hasWon {
+			log.Debug("User has not won the giveaway")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
 			return
 		}
@@ -256,6 +260,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 
+				log.Debug("Inserting thx notification...")
 				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")
@@ -302,6 +307,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 
+				log.Debug("Inserting thx notification...")
 				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")
@@ -357,14 +363,15 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 
 			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
 
-			_, err = s.ChannelMessageEdit(i.ChannelID, i.Message.ID, "Prośba o podziękowanie zaakceptowana przez: "+member.User.Mention())
+			content := "Prośba o podziękowanie zaakceptowana przez: " + member.User.Mention()
+			_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
+				Channel: i.ChannelID,
+				ID:      i.Message.ID,
+				Content: &content,
+				Embed:   embed,
+			})
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#session.ChannelMessageEdit: %v", err)
-				return
-			}
-			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
-			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#session.ChannelMessageEditEmbed: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#session.ChannelMessageEditComplex: %v", err)
 				return
 			}
 
@@ -374,6 +381,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
+			log.Debug("Inserting participant...")
 			err = h.GiveawayRepo.InsertParticipant(ctx, giveaway.Id, guild.ID, guild.Name, candidate.CandidateId, candidate.CandidateName, i.ChannelID, i.Message.ID)
 			if err != nil {
 				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.InsertParticipant: %v", err)
@@ -402,6 +410,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 
+				log.Debug("Inserting thx notification...")
 				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")

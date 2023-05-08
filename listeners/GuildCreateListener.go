@@ -38,9 +38,13 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 		"guild_name": g.Guild.Name,
 	}).Info("Registered guild")
 
+	log.Debug("Creating configuration if not exists")
 	h.createConfigurationIfNotExists(ctx, s, g.Guild.ID)
+	log.Debug("Creating missing giveaways for guild")
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, g.Guild)
+	log.Debug("Updating all members saved roles for guild")
 	h.updateAllMembersSavedRoles(ctx, s, g.Guild.ID)
+	log.Debug("Checking helpers for guild")
 	h.HelperService.CheckHelpers(ctx, s, g.Guild.ID)
 }
 
@@ -78,8 +82,7 @@ func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context,
 }
 
 func (h GuildCreateListener) updateAllMembersSavedRoles(ctx context.Context, session *discordgo.Session, guildId string) {
-	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
-	log.Debug("Updating all members saved roles")
+	_ = logger.GetLoggerFromContext(ctx).WithGuild(guildId)
 	guildMembers := discord.GetAllMembers(ctx, session, guildId)
 	for _, member := range guildMembers {
 		h.SavedRoleService.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)

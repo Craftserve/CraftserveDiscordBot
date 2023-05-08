@@ -12,7 +12,7 @@ var Logger = logrus.New()
 const loggerCtxKey string = "logger"
 
 func ConfigureLogger() {
-	logFile, err := os.Create("./logs.log")
+	logFile, err := os.Create("./csrvbot.log")
 	if err != nil {
 		logrus.Fatal("Could not create log file")
 	}
@@ -29,7 +29,7 @@ func ConfigureLogger() {
 }
 
 func GetLoggerFromContext(ctx context.Context) MyLogger {
-	logger, ok := ctx.Value(loggerCtxKey).(*logrus.Entry)
+	logger, ok := ctx.Value(loggerCtxKey).(MyLogger)
 	if !ok {
 		return MyLogger{Logger.WithContext(ctx)}
 	}

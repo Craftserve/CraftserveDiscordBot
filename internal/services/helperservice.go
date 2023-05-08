@@ -30,9 +30,11 @@ func (h *HelperService) CheckHelpers(ctx context.Context, session *discordgo.Ses
 		return
 	}
 	if serverConfig.HelperRoleThxesNeeded <= 0 {
+		log.Debug("HelperRoleThxesNeeded is 0 or less, not checking helpers")
 		return
 	}
 	if serverConfig.HelperRoleId == "" {
+		log.Debug("HelperRoleId is empty, not checking helpers")
 		return
 	}
 
@@ -63,7 +65,7 @@ func (h *HelperService) CheckHelpers(ctx context.Context, session *discordgo.Ses
 			continue
 		}
 		if isHelperBlacklisted && hasRole {
-			log.WithError(err).Error("CheckHelpers#UserRepo.IsUserHelperBlacklisted")
+			log.Infof("Removing helper role from %s (%s)", member.User.Username, helper.UserId)
 			err = session.GuildMemberRoleRemove(guildId, helper.UserId, serverConfig.HelperRoleId)
 			if err != nil {
 				log.WithError(err).Error("CheckHelpers#session.GuildMemberRoleRemove")
@@ -81,9 +83,11 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		return
 	}
 	if serverConfig.HelperRoleThxesNeeded <= 0 {
+		log.Debug("HelperRoleThxesNeeded is 0 or less, not checking helper")
 		return
 	}
 	if serverConfig.HelperRoleId == "" {
+		log.Debug("HelperRoleId is empty, not checking helper")
 		return
 	}
 
@@ -106,6 +110,7 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 	hasRole := discord.HasRoleById(member, serverConfig.HelperRoleId)
 
 	if isHelperBlacklisted && hasRole {
+		log.Debug("User is blacklisted, has role")
 		log.Infof("Removing helper role from %s (%s)", member.User.Username, memberId)
 		err = session.GuildMemberRoleRemove(guildId, memberId, serverConfig.HelperRoleId)
 		if err != nil {
@@ -114,6 +119,7 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		return
 	}
 	if hasRole || isHelperBlacklisted || !hasHelperAmount {
+		log.Debug("User has role, is blacklisted or doesn't have enough thxes - not adding role")
 		return
 	}
 	log.Infof("Adding helper role to %s (%s)", member.User.Username, memberId)

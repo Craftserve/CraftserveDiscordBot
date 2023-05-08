@@ -25,6 +25,7 @@ func (h GuildMemberAddListener) Handle(s *discordgo.Session, m *discordgo.GuildM
 	}
 	log := logger.GetLoggerFromContext(ctx).WithGuild(m.GuildID).WithUser(m.User.ID)
 	ctx = logger.ContextWithLogger(ctx, log)
+	log.Debug("Restoring member roles")
 	h.restoreMemberRoles(ctx, s, m.Member, m.GuildID)
 }
 
@@ -32,6 +33,7 @@ func (h GuildMemberAddListener) restoreMemberRoles(ctx context.Context, s *disco
 	log := logger.GetLoggerFromContext(ctx)
 	memberRoles, err := h.UserRepo.GetRolesForMember(ctx, guildId, member.User.ID)
 	for _, role := range memberRoles {
+		log.Debugf("Restoring role %s", role.RoleId)
 		err = s.GuildMemberRoleAdd(guildId, member.User.ID, role.RoleId)
 		if err != nil {
 			log.WithError(err).Error("restoreMemberRoles#session.GuildMemberRoleAdd")

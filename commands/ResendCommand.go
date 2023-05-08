@@ -54,6 +54,7 @@ func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 	thxEmbed := discord.ConstructResendEmbed(thxCodes)
 	msgEmbed := discord.ConstructResendEmbed(msgCodes)
 
+	log.Debug("Trying to create DM channel")
 	dm, err := s.UserChannelCreate(i.Member.User.ID)
 	if err != nil {
 		log.WithError(err).Error("ResendCommand#s.UserChannelCreate")

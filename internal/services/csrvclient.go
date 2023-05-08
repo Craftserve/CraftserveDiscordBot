@@ -21,6 +21,7 @@ type VoucherResponse struct {
 
 func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	log := logger.GetLoggerFromContext(ctx)
+	log.Debug("Generating CSRV voucher")
 	req, err := http.NewRequest("POST", "https://craftserve.pl/api/generate_voucher", nil)
 	if err != nil {
 		return "", err

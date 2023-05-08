@@ -21,6 +21,7 @@ type Config struct {
 	MessageGiveawayCron   string                        `json:"message_giveaway_cron_line"`
 	SystemToken           string                        `json:"system_token"`
 	CsrvSecret            string                        `json:"csrv_secret"`
+	RegisterCommands      bool                          `json:"register_commands"`
 }
 
 var BotConfig Config
@@ -83,7 +84,7 @@ func main() {
 	}
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
-	log.Debug("Running with intents: ", session.Identify.Intents)
+	log.Debugf("Running with intents: Guilds, GuildMessages, GuildMembers (%v)", session.Identify.Intents)
 
 	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.ThxGiveawayTimeString)
 	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
@@ -110,13 +111,17 @@ func main() {
 
 	log.WithField("username", session.State.User).Info("Bot logged in")
 
-	log.Debug("Registering commands")
-	giveawayCommand.Register(ctx, session)
-	thxCommand.Register(ctx, session)
-	thxmeCommand.Register(ctx, session)
-	csrvbotCommand.Register(ctx, session)
-	docCommand.Register(ctx, session)
-	resendCommand.Register(ctx, session)
+	if BotConfig.RegisterCommands {
+		log.Debug("Registering commands")
+		giveawayCommand.Register(ctx, session)
+		thxCommand.Register(ctx, session)
+		thxmeCommand.Register(ctx, session)
+		csrvbotCommand.Register(ctx, session)
+		docCommand.Register(ctx, session)
+		resendCommand.Register(ctx, session)
+	} else {
+		log.Debug("Skipping command registration")
+	}
 
 	log.Debug("Creating cron jobs: ", BotConfig.ThxGiveawayCron, " and ", BotConfig.MessageGiveawayCron)
 	c := cron.New()
