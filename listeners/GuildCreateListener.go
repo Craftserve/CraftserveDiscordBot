@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"github.com/bwmarrin/discordgo"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type GuildCreateListener struct {
@@ -82,9 +83,14 @@ func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context,
 }
 
 func (h GuildCreateListener) updateAllMembersSavedRoles(ctx context.Context, session *discordgo.Session, guildId string) {
-	_ = logger.GetLoggerFromContext(ctx).WithGuild(guildId)
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
+	startTime := time.Now()
 	guildMembers := discord.GetAllMembers(ctx, session, guildId)
 	for _, member := range guildMembers {
+		if len(member.Roles) == 0 {
+			continue
+		}
 		h.SavedRoleService.UpdateMemberSavedRoles(ctx, member.Roles, member.User.ID, guildId)
 	}
+	log.Debugf("Finished updating all members saved roles in %s", time.Since(startTime).String())
 }
