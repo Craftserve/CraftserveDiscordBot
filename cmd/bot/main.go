@@ -12,6 +12,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/robfig/cron"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 type Config struct {
@@ -125,15 +127,22 @@ func main() {
 
 	log.Debug("Creating cron jobs: ", BotConfig.ThxGiveawayCron, " and ", BotConfig.MessageGiveawayCron)
 	c := cron.New()
-	_ = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
+	err = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
 		giveawayService.FinishGiveaways(ctx, session)
 	})
-	_ = c.AddFunc(BotConfig.MessageGiveawayCron, func() {
+	if err != nil {
+		log.Errorf("Could not set thx giveaway cron job: %v", err)
+	}
+	err = c.AddFunc(BotConfig.MessageGiveawayCron, func() {
 		giveawayService.FinishMessageGiveaways(ctx, session)
 	})
+	if err != nil {
+		log.Errorf("Could not set message giveaway cron job: %v", err)
+	}
 	c.Start()
 
 	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 	log.Info("Shutting down...")
 	err = session.Close()
