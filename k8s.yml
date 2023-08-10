@@ -13,12 +13,12 @@ spec:
         app: csrvbot
     spec:
       imagePullSecrets:
-        - name: kwadratowa
+        - name: craftserve-registry
       containers:
         - name: csrvbot
           tty: true
           stdin: true
-          image: registry.kwadratowa.games/csrvbot/csrvbot:stable
+          image: localhost:30105/csrvbot/csrvbot:stable
           resources:
             requests:
               memory: "500Mi"
@@ -28,11 +28,12 @@ spec:
               cpu: "300m"
           imagePullPolicy: Always
           volumeMounts:
-            - name: csrvbot
+            - name: csrvbot-config
               mountPath: "/app/config.json"
               subPath: config.json
               readOnly: true
       volumes:
-        - name: csrvbot
-          configMap:
-            name: csrvbot
+        - name: csrvbot-config
+          secret:
+            secretName: csrvbot-config
+            optional: false
