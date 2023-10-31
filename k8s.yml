@@ -19,6 +19,9 @@ spec:
           tty: true
           stdin: true
           image: localhost:30105/csrvbot/csrvbot:stable
+          env:
+            - name: TZ
+              value: Europe/Warsaw
           resources:
             requests:
               memory: "500Mi"
