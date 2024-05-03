@@ -97,7 +97,7 @@ func ConstructWinnerEmbed(code string) *discordgo.MessageEmbed {
 			Name:    "Wygrałeś kod na serwer diamond!",
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
-		Description: "Gratulacje! W loterii wygrałeś darmowy kod na serwer w CraftServe! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok.",
+		Description: "Gratulacje! W loterii wygrałeś darmowy kod na serwer w Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok.",
 		Color:       0x234d20,
 		Fields: []*discordgo.MessageEmbedField{
 			{
@@ -113,11 +113,11 @@ func ConstructMessageWinnerEmbed(codes []string) *discordgo.MessageEmbed {
 	var author string
 	var name string
 	if len(codes) > 1 {
-		description = "Gratulacje! W loterii wygrałeś darmowe kody na serwer w CraftServe! Możesz je użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kody są ważne około rok."
+		description = "Gratulacje! W loterii wygrałeś darmowe kody na serwer w Craftserve! Możesz je użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kody są ważne około rok."
 		author = "Wygrałeś kody na serwer diamond!"
 		name = "KODY"
 	} else {
-		description = "Gratulacje! W loterii wygrałeś darmowy kod na serwer w CraftServe! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok."
+		description = "Gratulacje! W loterii wygrałeś darmowy kod na serwer w Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok."
 		author = "Wygrałeś kod na serwer diamond!"
 		name = "KOD"
 	}
@@ -154,10 +154,10 @@ func ConstructChannelWinnerEmbed(username string) *discordgo.MessageEmbed {
 func ConstructChannelMessageWinnerEmbed(usernames []string) *discordgo.MessageEmbed {
 	var description string
 	if len(usernames) > 1 {
-		description = "W loterii za aktywność wygraliście kody na serwer w CraftServe!"
+		description = "W loterii za aktywność wygraliście kody na serwer w Craftserve!"
 		description += "\n\n" + strings.Join(usernames, "\n")
 	} else {
-		description = "W loterii za aktywność " + usernames[0] + " wygrał kod na serwer w CraftServe. Gratulacje!"
+		description = "W loterii za aktywność " + usernames[0] + " wygrał kod na serwer w Craftserve. Gratulacje!"
 	}
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{

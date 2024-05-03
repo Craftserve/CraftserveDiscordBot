@@ -69,7 +69,7 @@ func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "Nie udało się wysłać kodów, ponieważ masz wyłączone wiadomości prywatne, oto kopia wiadomości:",
-				Embeds:  []*discordgo.MessageEmbed{thxEmbed},
+				Embeds:  []*discordgo.MessageEmbed{thxEmbed, msgEmbed},
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})

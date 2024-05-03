@@ -141,7 +141,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		log.Debug("User has won the giveaway, getting code...")
-		codes, err := h.MessageGiveawayRepo.GetCodesForInfoMessage(ctx, i.Message.ID)
+		codes, err := h.MessageGiveawayRepo.GetCodesForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
 			log.WithError(err).Errorf("handleMessageComponents#MessageGiveawayRepo.GetCodesForInfoMessage: %v", err)
 			return

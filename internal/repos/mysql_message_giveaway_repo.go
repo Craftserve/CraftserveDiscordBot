@@ -145,9 +145,9 @@ func (repo *MessageGiveawayRepo) HasWonGiveawayByMessageId(ctx context.Context, 
 	return ret > 0, nil
 }
 
-func (repo *MessageGiveawayRepo) GetCodesForInfoMessage(ctx context.Context, messageId string) ([]string, error) {
+func (repo *MessageGiveawayRepo) GetCodesForInfoMessage(ctx context.Context, messageId, userId string) ([]string, error) {
 	var codes []string
-	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways, message_giveaway_winners WHERE info_message_id=? AND message_giveaways.id = message_giveaway_winners.message_giveaway_id;", messageId)
+	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways giv, message_giveaway_winners win WHERE info_message_id=? AND giv.id = win.message_giveaway_id AND win.user_id=?;", messageId, userId)
 	return codes, err
 }
 

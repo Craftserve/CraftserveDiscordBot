@@ -307,7 +307,10 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 	switch giveawayType {
 	case "thx":
 		log.Debug("Starting thx giveaway")
-		go h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
+		go func() {
+			h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
+			h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
+		}()
 	case "message":
 		serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 		if err != nil {
