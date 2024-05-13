@@ -24,6 +24,7 @@ type Config struct {
 	SystemToken           string                        `json:"system_token"`
 	CsrvSecret            string                        `json:"csrv_secret"`
 	RegisterCommands      bool                          `json:"register_commands"`
+	DeveloperMode         bool                          `json:"developer_mode"`
 }
 
 var BotConfig Config
@@ -50,6 +51,10 @@ func main() {
 	log := logger.GetLoggerFromContext(ctx)
 	db := database.NewProvider()
 
+	if BotConfig.DeveloperMode {
+		log.Warn("!!! Running in developer mode !!!")
+	}
+
 	log.Debug("Initializing MySQL databases")
 	err := db.InitMySQLDatabases(ctx, BotConfig.MysqlConfig)
 	if err != nil {
@@ -73,7 +78,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret)
+	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.DeveloperMode)
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo, messageGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
