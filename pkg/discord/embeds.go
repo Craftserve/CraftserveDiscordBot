@@ -184,3 +184,37 @@ func ConstructResendEmbed(codes []string) *discordgo.MessageEmbed {
 	}
 	return embed
 }
+
+func ConstructUnconditionalGiveawayJoinEmbed(participants []string) *discordgo.MessageEmbed {
+	description := "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!"
+	if len(participants) > 0 {
+		description += "\n\n**Uczestnicy: **" + strings.Join(participants, ", ")
+	}
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     "https://craftserve.pl",
+			Name:    "Dołącz do giveaway już teraz!",
+			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+		},
+		Color:       0x234d20,
+		Description: description,
+	}
+}
+
+func ConstructUnconditionalGiveawayWinnersEmbed(participantsIds []string) *discordgo.MessageEmbed {
+	description := "Oto zwycięzcy bezwarunkowego giveawaya! Gratulacje!"
+
+	for _, id := range participantsIds {
+		description += "\n\n- <@" + id + ">"
+	}
+
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     "https://craftserve.pl",
+			Name:    "Dołącz do giveaway już teraz!",
+			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+		},
+		Color:       0x234d20,
+		Description: description,
+	}
+}
