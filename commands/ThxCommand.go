@@ -138,7 +138,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 							Label:    "",
 							Style:    discordgo.SuccessButton,
 							CustomID: "accept",
-							Emoji: discordgo.ComponentEmoji{
+							Emoji: &discordgo.ComponentEmoji{
 								Name: "✅",
 							},
 						},
@@ -146,7 +146,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 							Label:    "",
 							Style:    discordgo.DangerButton,
 							CustomID: "reject",
-							Emoji: discordgo.ComponentEmoji{
+							Emoji: &discordgo.ComponentEmoji{
 								Name: "⛔",
 							},
 						},

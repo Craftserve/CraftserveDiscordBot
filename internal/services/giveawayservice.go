@@ -104,7 +104,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 						Label:    "Kliknij tutaj, aby wyświetlić kod",
 						Style:    discordgo.SuccessButton,
 						CustomID: "thxwinnercode",
-						Emoji: discordgo.ComponentEmoji{
+						Emoji: &discordgo.ComponentEmoji{
 							Name: "🎉",
 						},
 					},
@@ -318,7 +318,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 						Label:    "Kliknij tutaj, aby wyświetlić kod",
 						Style:    discordgo.SuccessButton,
 						CustomID: "msgwinnercode",
-						Emoji: discordgo.ComponentEmoji{
+						Emoji: &discordgo.ComponentEmoji{
 							Name: "🎉",
 						},
 					},
@@ -484,7 +484,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 						Label:    "Kliknij tutaj, aby wyświetlić kod",
 						Style:    discordgo.SuccessButton,
 						CustomID: "unconditionalwinnercode",
-						Emoji: discordgo.ComponentEmoji{
+						Emoji: &discordgo.ComponentEmoji{
 							Name: "🎉",
 						},
 					},
@@ -564,7 +564,7 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 							Label:    "Weź udział",
 							Style:    discordgo.SuccessButton,
 							CustomID: "unconditionalgiveawayjoin",
-							Emoji: discordgo.ComponentEmoji{
+							Emoji: &discordgo.ComponentEmoji{
 								Name: "🙋",
 							},
 						},
