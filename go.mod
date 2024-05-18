@@ -3,7 +3,7 @@ module csrvbot
 go 1.13
 
 require (
-	github.com/bwmarrin/discordgo v0.27.1
+	github.com/bwmarrin/discordgo v0.28.1
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/lib/pq v1.7.1 // indirect
