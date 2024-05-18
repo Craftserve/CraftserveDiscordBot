@@ -15,32 +15,34 @@ import (
 )
 
 type InteractionCreateListener struct {
-	GiveawayCommand     commands.GiveawayCommand
-	ThxCommand          commands.ThxCommand
-	ThxmeCommand        commands.ThxmeCommand
-	CsrvbotCommand      commands.CsrvbotCommand
-	DocCommand          commands.DocCommand
-	ResendCommand       commands.ResendCommand
-	GiveawayHours       string
-	GiveawayRepo        repos.GiveawayRepo
-	MessageGiveawayRepo repos.MessageGiveawayRepo
-	ServerRepo          repos.ServerRepo
-	HelperService       services.HelperService
+	GiveawayCommand           commands.GiveawayCommand
+	ThxCommand                commands.ThxCommand
+	ThxmeCommand              commands.ThxmeCommand
+	CsrvbotCommand            commands.CsrvbotCommand
+	DocCommand                commands.DocCommand
+	ResendCommand             commands.ResendCommand
+	GiveawayHours             string
+	GiveawayRepo              repos.GiveawayRepo
+	MessageGiveawayRepo       repos.MessageGiveawayRepo
+	ServerRepo                repos.ServerRepo
+	HelperService             services.HelperService
+	UnconditionalGiveawayRepo repos.UnconditionalGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) InteractionCreateListener {
 	return InteractionCreateListener{
-		GiveawayCommand:     giveawayCommand,
-		ThxCommand:          thxCommand,
-		ThxmeCommand:        thxmeCommand,
-		CsrvbotCommand:      csrvbotCommand,
-		DocCommand:          docCommand,
-		ResendCommand:       resendCommand,
-		GiveawayHours:       giveawayHours,
-		GiveawayRepo:        *giveawayRepo,
-		MessageGiveawayRepo: *messageGiveawayRepo,
-		ServerRepo:          *serverRepo,
-		HelperService:       *helperService,
+		GiveawayCommand:           giveawayCommand,
+		ThxCommand:                thxCommand,
+		ThxmeCommand:              thxmeCommand,
+		CsrvbotCommand:            csrvbotCommand,
+		DocCommand:                docCommand,
+		ResendCommand:             resendCommand,
+		GiveawayHours:             giveawayHours,
+		GiveawayRepo:              *giveawayRepo,
+		MessageGiveawayRepo:       *messageGiveawayRepo,
+		ServerRepo:                *serverRepo,
+		HelperService:             *helperService,
+		UnconditionalGiveawayRepo: *unconditionalGiveawayRepo,
 	}
 }
 
@@ -160,6 +162,98 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 	case "accept", "reject":
 		h.handleAcceptDeclineButtons(ctx, s, i)
+	case "unconditionalgiveawayjoin":
+		log.Debug("User clicked unconditionalgiveawayjoin button")
+
+		giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetGiveawayForGuild: %v", err)
+			return
+		}
+
+		isFinished, err := h.UnconditionalGiveawayRepo.IsGiveawayFinishedByMessageId(ctx, i.Message.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.IsGiveawayFinishedByMessageId: %v", err)
+			return
+		}
+
+		if isFinished {
+			log.Debug("Giveaway has ended")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
+			return
+		}
+
+		participants, err := h.UnconditionalGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetParticipantsForGiveaway: %v", err)
+			return
+		}
+
+		for _, participant := range participants {
+			if participant.UserId == i.Member.User.ID {
+				log.Debug("User is already a participant")
+				discord.RespondWithEphemeralMessage(ctx, s, i, "Już jesteś uczestnikiem tego giveawayu!")
+				return
+			}
+		}
+
+		err = h.UnconditionalGiveawayRepo.InsertParticipant(ctx, giveaway.Id, i.Member.User.ID, i.Member.User.Username)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.InsertParticipant: %v", err)
+			return
+		}
+
+		log.Infof("%s joined unconditional giveaway", i.Member.User.Username)
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Zostałeś dodany do giveawayu!")
+
+		// Edit embed to show new participant
+		log.Debug("Editing message to show new participant...")
+
+		participantNames, err := h.UnconditionalGiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetParticipantNamesForGiveaway: %v", err)
+			return
+		}
+
+		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(participantNames)
+		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)
+			return
+		}
+	case "unconditionalwinnercode":
+		log.Debug("User clicked unconditionalwinnercode button")
+
+		hasWon, err := h.UnconditionalGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			return
+		}
+
+		if !hasWon {
+			log.Debug("User has not won the giveaway")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
+			return
+		}
+
+		log.Debug("User has won the giveaway, getting code...")
+		code, err := h.UnconditionalGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetCodesForInfoMessage: %v", err)
+			return
+		}
+
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(code)},
+			},
+		})
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#session.InteractionRespond: %v", err)
+			return
+		}
 	}
 }
 
