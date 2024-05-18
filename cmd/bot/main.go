@@ -22,6 +22,7 @@ type Config struct {
 	ThxGiveawayTimeString     string                        `json:"thx_giveaway_time_string"`
 	MessageGiveawayCron       string                        `json:"message_giveaway_cron_line"`
 	UnconditionalGiveawayCron string                        `json:"unconditional_giveaway_cron_line"`
+	ConditionalGiveawayCron   string                        `json:"conditional_giveaway_cron_line"`
 	SystemToken               string                        `json:"system_token"`
 	CsrvSecret                string                        `json:"csrv_secret"`
 	RegisterCommands          bool                          `json:"register_commands"`
@@ -132,7 +133,7 @@ func main() {
 		log.Debug("Skipping command registration")
 	}
 
-	log.Debugf("Creating cron jobs: %s | %s | %s", BotConfig.ThxGiveawayCron, BotConfig.MessageGiveawayCron, BotConfig.UnconditionalGiveawayCron)
+	log.Debugf("Creating cron jobs: %s | %s | %s | %s", BotConfig.ThxGiveawayCron, BotConfig.MessageGiveawayCron, BotConfig.UnconditionalGiveawayCron, BotConfig.ConditionalGiveawayCron)
 	c := cron.New()
 	err = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
 		giveawayService.FinishGiveaways(ctx, session)
@@ -140,15 +141,27 @@ func main() {
 	if err != nil {
 		log.Errorf("Could not set thx giveaway cron job: %v", err)
 	}
+
 	err = c.AddFunc(BotConfig.MessageGiveawayCron, func() {
 		giveawayService.FinishMessageGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Errorf("Could not set message giveaway cron job: %v", err)
 	}
+
 	err = c.AddFunc(BotConfig.UnconditionalGiveawayCron, func() {
 		giveawayService.FinishUnconditionalGiveaways(ctx, session)
 	})
+	if err != nil {
+		log.Errorf("Could not set unconditional giveaway cron job: %v", err)
+	}
+
+	err = c.AddFunc(BotConfig.ConditionalGiveawayCron, func() {
+		// TODO: Implement conditional giveaway cron job
+	})
+	if err != nil {
+		log.Errorf("Could not set conditional giveaway cron job: %v", err)
+	}
 	c.Start()
 
 	stop := make(chan os.Signal, 1)
