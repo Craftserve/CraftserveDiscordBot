@@ -17,14 +17,15 @@ import (
 )
 
 type Config struct {
-	MysqlConfig           []database.MySQLConfiguration `json:"mysql_config"`
-	ThxGiveawayCron       string                        `json:"thx_giveaway_cron_line"`
-	ThxGiveawayTimeString string                        `json:"thx_giveaway_time_string"`
-	MessageGiveawayCron   string                        `json:"message_giveaway_cron_line"`
-	SystemToken           string                        `json:"system_token"`
-	CsrvSecret            string                        `json:"csrv_secret"`
-	RegisterCommands      bool                          `json:"register_commands"`
-	DeveloperMode         bool                          `json:"developer_mode"`
+	MysqlConfig               []database.MySQLConfiguration `json:"mysql_config"`
+	ThxGiveawayCron           string                        `json:"thx_giveaway_cron_line"`
+	ThxGiveawayTimeString     string                        `json:"thx_giveaway_time_string"`
+	MessageGiveawayCron       string                        `json:"message_giveaway_cron_line"`
+	UnconditionalGiveawayCron string                        `json:"unconditional_giveaway_cron_line"`
+	SystemToken               string                        `json:"system_token"`
+	CsrvSecret                string                        `json:"csrv_secret"`
+	RegisterCommands          bool                          `json:"register_commands"`
+	DeveloperMode             bool                          `json:"developer_mode"`
 }
 
 var BotConfig Config
@@ -52,7 +53,7 @@ func main() {
 	db := database.NewProvider()
 
 	if BotConfig.DeveloperMode {
-		log.Warn("!!! Running in developer mode !!!")
+		log.Warn("Running in developer mode!")
 	}
 
 	log.Debug("Initializing MySQL databases")
@@ -69,6 +70,7 @@ func main() {
 
 	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
 	var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
+	var unconditionalGiveawayRepo = repos.NewUnconditionalGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 
@@ -80,7 +82,7 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.DeveloperMode)
 	var githubClient = services.NewGithubClient()
-	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo, messageGiveawayRepo)
+	var giveawayService = services.NewGiveawayService(csrvClient, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 	var savedRoleService = services.NewSavedRoleService(userRepo)
 
@@ -99,7 +101,7 @@ func main() {
 	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.ThxGiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo, messageGiveawayRepo)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, giveawayRepo, messageGiveawayRepo, serverRepo, helperService)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, unconditionalGiveawayRepo)
 	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
@@ -130,7 +132,7 @@ func main() {
 		log.Debug("Skipping command registration")
 	}
 
-	log.Debug("Creating cron jobs: ", BotConfig.ThxGiveawayCron, " and ", BotConfig.MessageGiveawayCron)
+	log.Debugf("Creating cron jobs: %s | %s | %s", BotConfig.ThxGiveawayCron, BotConfig.MessageGiveawayCron, BotConfig.UnconditionalGiveawayCron)
 	c := cron.New()
 	err = c.AddFunc(BotConfig.ThxGiveawayCron, func() {
 		giveawayService.FinishGiveaways(ctx, session)
@@ -144,6 +146,9 @@ func main() {
 	if err != nil {
 		log.Errorf("Could not set message giveaway cron job: %v", err)
 	}
+	err = c.AddFunc(BotConfig.UnconditionalGiveawayCron, func() {
+		giveawayService.FinishUnconditionalGiveaways(ctx, session)
+	})
 	c.Start()
 
 	stop := make(chan os.Signal, 1)
