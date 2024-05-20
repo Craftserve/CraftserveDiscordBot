@@ -26,6 +26,27 @@ type CsrvbotCommand struct {
 	HelperService            services.HelperService
 }
 
+const (
+	// CsrvbotCommand Subcommands
+	SettingSubcommand           = "settings"
+	DeleteSubcommand            = "delete"
+	StartSubcommand             = "start"
+	BlacklistSubcommand         = "blacklist"
+	UnblacklistSubcommand       = "unblacklist"
+	HelperBlacklistSubcommand   = "helperblacklist"
+	HelperUnblacklistSubcommand = "helperunblacklist"
+
+	// SettingSubcommand Subcommands
+	GiveawayChannelSubcommand              = "giveawaychannel"
+	ThxInfoChannelSubcommand               = "thxinfochannel"
+	AdminRoleSubcommand                    = "adminrole"
+	HelperRoleSubcommand                   = "helperrole"
+	HelperThxAmountSubcommand              = "helperthxamount"
+	WinnerCountSubcommand                  = "winnercount"
+	UnconditionalGiveawayChannelSubcommand = "unconditionalgiveawaychannel"
+	UnconditionalWinnerCountSubcommand     = "unconditionalwinnercount"
+)
+
 func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
 		Name:                     "csrvbot",
@@ -54,11 +75,11 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 		DefaultMemberPermissions: &h.DefaultMemberPermissions,
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Name:        "settings",
+				Name:        SettingSubcommand,
 				Description: "Konfiguracja giveawayów",
 				Options: []*discordgo.ApplicationCommandOption{
 					{
-						Name:        "giveawaychannel",
+						Name:        GiveawayChannelSubcommand,
 						Description: "Kanał na którym jest prezentowany zwycięzca giveawaya",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -74,7 +95,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "thxinfochannel",
+						Name:        ThxInfoChannelSubcommand,
 						Description: "Kanał na którym są wysyłane wszystkie thxy do rozpatrzenia",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -90,7 +111,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "adminrole",
+						Name:        AdminRoleSubcommand,
 						Description: "Rola, która ma dostęp do akceptowania thx i komend administracyjnych",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -103,7 +124,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "helperrole",
+						Name:        HelperRoleSubcommand,
 						Description: "Rola którą dostanie użytkownik, gdy osiągnie daną ilość thx",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -116,7 +137,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "helperthxamount",
+						Name:        HelperThxAmountSubcommand,
 						Description: "Ilość wymaganych thx do uzyskania roli helpera",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -130,7 +151,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "winnercount",
+						Name:        WinnerCountSubcommand,
 						Description: "Ilość wybieranych zwycięzców w giveawayu z wiadomości",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -144,7 +165,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "unconditionalgiveawaychannel",
+						Name:        UnconditionalGiveawayChannelSubcommand,
 						Description: "Kanał na którym odbywa się bezwarunkowy giveaway",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -160,7 +181,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 						},
 					},
 					{
-						Name:        "unconditionalwinnercount",
+						Name:        UnconditionalWinnerCountSubcommand,
 						Description: "Ilość wybieranych zwycięzców w bezwarunkowym giveawayu",
 						Type:        discordgo.ApplicationCommandOptionSubCommand,
 						Options: []*discordgo.ApplicationCommandOption{
@@ -177,7 +198,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				Type: discordgo.ApplicationCommandOptionSubCommandGroup,
 			},
 			{
-				Name:        "delete",
+				Name:        DeleteSubcommand,
 				Description: "Usuwa użytkownika z obecnego giveawaya",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -190,7 +211,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				},
 			},
 			{
-				Name:        "start",
+				Name:        StartSubcommand,
 				Description: "Rozstrzyga obecny giveaway",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -213,7 +234,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				},
 			},
 			{
-				Name:        "blacklist",
+				Name:        BlacklistSubcommand,
 				Description: "Dodaje użytkownika do blacklisty możliwości udziału w giveawayu",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -226,7 +247,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				},
 			},
 			{
-				Name:        "unblacklist",
+				Name:        UnblacklistSubcommand,
 				Description: "Usuwa użytkownika z blacklisty możliwości udziału w giveawayu",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -239,7 +260,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				},
 			},
 			{
-				Name:        "helperblacklist",
+				Name:        HelperBlacklistSubcommand,
 				Description: "Dodaje użytkownika do blacklisty możliwości posiadania rangi helpera",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -252,7 +273,7 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 				},
 			},
 			{
-				Name:        "helperunblacklist",
+				Name:        HelperUnblacklistSubcommand,
 				Description: "Usuwa użytkownika z blacklisty możliwości posiadania rangi helpera",
 				Type:        discordgo.ApplicationCommandOptionSubCommand,
 				Options: []*discordgo.ApplicationCommandOption{
@@ -293,40 +314,40 @@ func (h CsrvbotCommand) Handle(ctx context.Context, s *discordgo.Session, i *dis
 	ctx = logger.ContextWithLogger(ctx, log)
 
 	switch i.ApplicationCommandData().Options[0].Name {
-	case "settings":
+	case SettingSubcommand:
 		h.handleSettings(ctx, s, i)
-	case "delete":
+	case DeleteSubcommand:
 		h.handleDelete(ctx, s, i)
-	case "start":
+	case StartSubcommand:
 		h.handleStart(ctx, s, i)
-	case "blacklist":
+	case BlacklistSubcommand:
 		h.handleBlacklist(ctx, s, i)
-	case "unblacklist":
+	case UnblacklistSubcommand:
 		h.handleUnblacklist(ctx, s, i)
-	case "helperblacklist":
+	case HelperBlacklistSubcommand:
 		h.handleHelperBlacklist(ctx, s, i)
-	case "helperunblacklist":
+	case HelperUnblacklistSubcommand:
 		h.handleHelperUnblacklist(ctx, s, i)
 	}
 }
 
 func (h CsrvbotCommand) handleSettings(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.ApplicationCommandData().Options[0].Options[0].Name {
-	case "giveawaychannel":
+	case GiveawayChannelSubcommand:
 		h.handleGiveawayChannelSet(ctx, s, i)
-	case "thxinfochannel":
+	case ThxInfoChannelSubcommand:
 		h.handleThxInfoChannelSet(ctx, s, i)
-	case "adminrole":
+	case AdminRoleSubcommand:
 		h.handleAdminRoleSet(ctx, s, i)
-	case "helperrole":
+	case HelperRoleSubcommand:
 		h.handleHelperRoleSet(ctx, s, i)
-	case "helperthxamount":
+	case HelperThxAmountSubcommand:
 		h.handleHelperThxAmountSet(ctx, s, i)
-	case "winnercount":
+	case WinnerCountSubcommand:
 		h.handleWinnerCountSet(ctx, s, i)
-	case "unconditionalgiveawaychannel":
+	case UnconditionalGiveawayChannelSubcommand:
 		h.handleUnconditionalGiveawayChannelSet(ctx, s, i)
-	case "unconditionalwinnercount":
+	case UnconditionalWinnerCountSubcommand:
 		h.handleUnconditionalWinnersCountSet(ctx, s, i)
 	}
 }
