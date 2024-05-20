@@ -14,15 +14,17 @@ type GiveawayCommand struct {
 	DMPermission  bool
 	GiveawayHours string
 	GiveawayRepo  repos.GiveawayRepo
+	CraftserveUrl string
 }
 
-func NewGiveawayCommand(giveawayRepo *repos.GiveawayRepo, giveawayHours string) GiveawayCommand {
+func NewGiveawayCommand(giveawayRepo *repos.GiveawayRepo, giveawayHours, craftserveUrl string) GiveawayCommand {
 	return GiveawayCommand{
 		Name:          "giveaway",
 		Description:   "Wyświetla zasady giveawaya",
 		DMPermission:  false,
 		GiveawayRepo:  *giveawayRepo,
 		GiveawayHours: giveawayHours,
+		CraftserveUrl: craftserveUrl,
 	}
 }
 
@@ -56,7 +58,7 @@ func (h GiveawayCommand) Handle(ctx context.Context, s *discordgo.Session, i *di
 		Data: &discordgo.InteractionResponseData{
 			Flags: discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				discord.ConstructInfoEmbed(participants, h.GiveawayHours),
+				discord.ConstructInfoEmbed(h.CraftserveUrl, participants, h.GiveawayHours),
 			},
 		},
 	})

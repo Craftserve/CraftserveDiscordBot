@@ -22,6 +22,7 @@ type InteractionCreateListener struct {
 	DocCommand                commands.DocCommand
 	ResendCommand             commands.ResendCommand
 	GiveawayHours             string
+	CraftserveUrl             string
 	GiveawayRepo              repos.GiveawayRepo
 	MessageGiveawayRepo       repos.MessageGiveawayRepo
 	ServerRepo                repos.ServerRepo
@@ -29,7 +30,7 @@ type InteractionCreateListener struct {
 	UnconditionalGiveawayRepo repos.UnconditionalGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) InteractionCreateListener {
 	return InteractionCreateListener{
 		GiveawayCommand:           giveawayCommand,
 		ThxCommand:                thxCommand,
@@ -38,6 +39,7 @@ func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxC
 		DocCommand:                docCommand,
 		ResendCommand:             resendCommand,
 		GiveawayHours:             giveawayHours,
+		CraftserveUrl:             craftserveUrl,
 		GiveawayRepo:              *giveawayRepo,
 		MessageGiveawayRepo:       *messageGiveawayRepo,
 		ServerRepo:                *serverRepo,
@@ -122,7 +124,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(code)},
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(h.CraftserveUrl, code)},
 			},
 		})
 		if err != nil {
@@ -153,7 +155,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructMessageWinnerEmbed(codes)},
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructMessageWinnerEmbed(h.CraftserveUrl, codes)},
 			},
 		})
 		if err != nil {
@@ -215,7 +217,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 
-		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(participantNames)
+		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, participantNames)
 		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 		if err != nil {
 			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)
@@ -247,7 +249,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(code)},
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(h.CraftserveUrl, code)},
 			},
 		})
 		if err != nil {
@@ -339,7 +341,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -348,7 +350,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(notificationErr, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -361,7 +363,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -386,7 +388,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -395,7 +397,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(notificationErr, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -408,7 +410,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -455,7 +457,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
 
 			content := "Prośba o podziękowanie zaakceptowana przez: " + member.User.Mention()
 			_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
@@ -498,7 +500,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(err, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -511,7 +513,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return

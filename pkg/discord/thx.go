@@ -4,8 +4,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func NotifyThxOnThxInfoChannel(s *discordgo.Session, thxInfoChannelId, thxNotificationMessageId, guildId, channelId, thxMessageId, participantId, confirmerId, state string) (string, error) {
-	embed := ConstructThxNotificationEmbed(guildId, channelId, thxMessageId, participantId, confirmerId, state)
+func NotifyThxOnThxInfoChannel(s *discordgo.Session, thxInfoChannelId, thxNotificationMessageId, guildId, channelId, thxMessageId, participantId, confirmerId, state, url string) (string, error) {
+	embed := ConstructThxNotificationEmbed(url, guildId, channelId, thxMessageId, participantId, confirmerId, state)
 
 	if thxInfoChannelId == "" {
 		return "", nil

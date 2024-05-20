@@ -17,6 +17,7 @@ type CsrvbotCommand struct {
 	DefaultMemberPermissions int64
 	Zero                     float64
 	GiveawayHours            string
+	CraftserveUrl            string
 	ServerRepo               repos.ServerRepo
 	GiveawayRepo             repos.GiveawayRepo
 	UserRepo                 repos.UserRepo
@@ -25,7 +26,7 @@ type CsrvbotCommand struct {
 	HelperService            services.HelperService
 }
 
-func NewCsrvbotCommand(giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
+func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
 		Name:                     "csrvbot",
 		Description:              "Komendy konfiguracyjne i administracyjne",
@@ -33,6 +34,7 @@ func NewCsrvbotCommand(giveawayHours string, serverRepo *repos.ServerRepo, givea
 		DefaultMemberPermissions: discordgo.PermissionManageMessages,
 		Zero:                     0.0,
 		GiveawayHours:            giveawayHours,
+		CraftserveUrl:            craftserveUrl,
 		ServerRepo:               *serverRepo,
 		GiveawayRepo:             *giveawayRepo,
 		UserRepo:                 *userRepo,
@@ -401,7 +403,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			return
 		}
 		log.WithMessage(participant.MessageId).Debug("Updating thx embed after entry deletion for participant ", participant.UserId)
-		embed := discord.ConstructThxEmbed(participantNames, h.GiveawayHours, participant.UserId, "", "reject")
+		embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantNames, h.GiveawayHours, participant.UserId, "", "reject")
 		_, err = s.ChannelMessageEditEmbed(participant.ChannelId, participant.MessageId, embed)
 		if err != nil {
 			log.WithError(err).Error("handleDelete s.ChannelMessageEditEmbed")
@@ -413,7 +415,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			return
 		}
 		log.Debug("Updating thx notification message after entry deletion for participant ", participant.UserId)
-		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, participant.MessageId, participant.UserId, "", "reject")
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, participant.MessageId, participant.UserId, "", "reject", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleDelete discord.NotifyThxOnThxInfoChannel")
 			return

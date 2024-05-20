@@ -6,6 +6,7 @@
     "host": "address:port",
     "database": "db_name"
   }],
+  "craftserve_url": "https://craftserve.pl",
   "thx_giveaway_cron_line": "0 0 6,12,18 * *",
   "thx_giveaway_time_string": "6:00, 12:00, 18:00",
   "message_giveaway_cron_line": "0 0 6,12,18 * *",

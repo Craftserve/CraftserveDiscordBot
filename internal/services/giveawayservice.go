@@ -15,15 +15,17 @@ import (
 
 type GiveawayService struct {
 	CsrvClient                CsrvClient
+	CraftserveUrl             string
 	ServerRepo                repos.ServerRepo
 	GiveawayRepo              repos.GiveawayRepo
 	MessageGiveawayRepo       repos.MessageGiveawayRepo
 	UnconditionalGiveawayRepo repos.UnconditionalGiveawayRepo
 }
 
-func NewGiveawayService(csrvClient *CsrvClient, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) *GiveawayService {
+func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) *GiveawayService {
 	return &GiveawayService{
 		CsrvClient:                *csrvClient,
+		CraftserveUrl:             craftserveUrl,
 		ServerRepo:                *serverRepo,
 		GiveawayRepo:              *giveawayRepo,
 		MessageGiveawayRepo:       *messageGiveawayRepo,
@@ -87,14 +89,14 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		log.WithError(err).Error("FinishGiveaway#s.GuildMember")
 		return
 	}
-	dmEmbed := discord.ConstructWinnerEmbed(code)
+	dmEmbed := discord.ConstructWinnerEmbed(h.CraftserveUrl, code)
 	dm, err := s.UserChannelCreate(winner.UserId)
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#s.UserChannelCreate")
 	}
 	_, err = s.ChannelMessageSendEmbed(dm.ID, dmEmbed)
 
-	mainEmbed := discord.ConstructChannelWinnerEmbed(member.User.Username)
+	mainEmbed := discord.ConstructChannelWinnerEmbed(h.CraftserveUrl, member.User.Username)
 	message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 		Embed: mainEmbed,
 		Components: []discordgo.MessageComponent{
@@ -290,7 +292,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 			continue
 		}
 
-		dmEmbed := discord.ConstructWinnerEmbed(code)
+		dmEmbed := discord.ConstructWinnerEmbed(h.CraftserveUrl, code)
 		dm, err := session.UserChannelCreate(winnerId)
 		if err != nil {
 			log.WithError(err).Error("FinishMessageGiveaway#session.UserChannelCreate")
@@ -308,7 +310,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		return
 	}
 
-	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(winnerNames)
+	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(h.CraftserveUrl, winnerNames)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 		Embed: mainEmbed,
 		Components: []discordgo.MessageComponent{
@@ -461,7 +463,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 
 		log.Debug("Sending DM to unconditional giveaway winner")
 
-		dmEmbed := discord.ConstructWinnerEmbed(code)
+		dmEmbed := discord.ConstructWinnerEmbed(h.CraftserveUrl, code)
 		dm, err := session.UserChannelCreate(winner.UserId)
 		if err != nil {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#session.UserChannelCreate")
@@ -474,7 +476,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		}
 	}
 
-	winnersEmbed := discord.ConstructUnconditionalGiveawayWinnersEmbed(winnerIds)
+	winnersEmbed := discord.ConstructUnconditionalGiveawayWinnersEmbed(h.CraftserveUrl, winnerIds)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 		Embed: winnersEmbed,
 		Components: []discordgo.MessageComponent{
@@ -554,7 +556,7 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 	if errors.Is(err, sql.ErrNoRows) {
 		log.Debug("Unconditional giveaway for guild does not exist, creating...")
 
-		mainEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(make([]string, 0))
+		mainEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, make([]string, 0))
 		message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 			Embed: mainEmbed,
 			Components: []discordgo.MessageComponent{

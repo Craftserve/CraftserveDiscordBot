@@ -12,15 +12,17 @@ type ResendCommand struct {
 	Name                string
 	Description         string
 	DMPermission        bool
+	CraftserveUrl       string
 	GiveawayRepo        repos.GiveawayRepo
 	MessageGiveawayRepo repos.MessageGiveawayRepo
 }
 
-func NewResendCommand(giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo) ResendCommand {
+func NewResendCommand(giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, craftserveUrl string) ResendCommand {
 	return ResendCommand{
 		Name:                "resend",
 		Description:         "Wysyła na PW ostatnie 10 wygranych kodów z giveawayi",
 		DMPermission:        false,
+		CraftserveUrl:       craftserveUrl,
 		GiveawayRepo:        *giveawayRepo,
 		MessageGiveawayRepo: *messageGiveawayRepo,
 	}
@@ -51,8 +53,8 @@ func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 		log.WithError(err).Error("ResendCommand#h.MessageGiveawayRepo.GetLastCodesForUser")
 		return
 	}
-	thxEmbed := discord.ConstructResendEmbed(thxCodes)
-	msgEmbed := discord.ConstructResendEmbed(msgCodes)
+	thxEmbed := discord.ConstructResendEmbed(h.CraftserveUrl, thxCodes)
+	msgEmbed := discord.ConstructResendEmbed(h.CraftserveUrl, msgCodes)
 
 	log.Debug("Trying to create DM channel")
 	dm, err := s.UserChannelCreate(i.Member.User.ID)

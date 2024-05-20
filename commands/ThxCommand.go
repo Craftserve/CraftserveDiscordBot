@@ -15,12 +15,13 @@ type ThxCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
+	CraftserveUrl string
 	GiveawayRepo  repos.GiveawayRepo
 	UserRepo      repos.UserRepo
 	ServerRepo    repos.ServerRepo
 }
 
-func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, serverRepo *repos.ServerRepo, giveawayHours string) ThxCommand {
+func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, serverRepo *repos.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
 	return ThxCommand{
 		Name:          "thx",
 		Description:   "Podziękowanie innemu użytkownikowi",
@@ -29,6 +30,7 @@ func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, s
 		UserRepo:      *userRepo,
 		ServerRepo:    *serverRepo,
 		GiveawayHours: giveawayHours,
+		CraftserveUrl: craftserveUrl,
 	}
 }
 
@@ -126,7 +128,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 
-	embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, selectedUser.ID, "", "wait")
+	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, selectedUser.ID, "", "wait")
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -195,7 +197,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
-		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return
@@ -208,7 +210,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 			return
 		}
 	} else {
-		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return
