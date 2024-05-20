@@ -10,24 +10,31 @@ import (
 	"csrvbot/pkg/logger"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
+	"github.com/getsentry/sentry-go"
 	"github.com/robfig/cron"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 type Config struct {
-	MysqlConfig               []database.MySQLConfiguration `json:"mysql_config"`
-	CraftserveUrl             string                        `json:"craftserve_url"`
-	ThxGiveawayCron           string                        `json:"thx_giveaway_cron_line"`
-	ThxGiveawayTimeString     string                        `json:"thx_giveaway_time_string"`
-	MessageGiveawayCron       string                        `json:"message_giveaway_cron_line"`
-	UnconditionalGiveawayCron string                        `json:"unconditional_giveaway_cron_line"`
-	ConditionalGiveawayCron   string                        `json:"conditional_giveaway_cron_line"`
-	SystemToken               string                        `json:"system_token"`
-	CsrvSecret                string                        `json:"csrv_secret"`
-	RegisterCommands          bool                          `json:"register_commands"`
-	DeveloperMode             bool                          `json:"developer_mode"`
+	MysqlConfig  []database.MySQLConfiguration `json:"mysql_config"`
+	SentryConfig struct {
+		DSN     string `json:"dsn"`
+		Release string `json:"release"`
+		Debug   bool   `json:"debug"`
+	} `json:"sentry_config"`
+	CraftserveUrl             string `json:"craftserve_url"`
+	ThxGiveawayCron           string `json:"thx_giveaway_cron_line"`
+	ThxGiveawayTimeString     string `json:"thx_giveaway_time_string"`
+	MessageGiveawayCron       string `json:"message_giveaway_cron_line"`
+	UnconditionalGiveawayCron string `json:"unconditional_giveaway_cron_line"`
+	ConditionalGiveawayCron   string `json:"conditional_giveaway_cron_line"`
+	SystemToken               string `json:"system_token"`
+	CsrvSecret                string `json:"csrv_secret"`
+	RegisterCommands          bool   `json:"register_commands"`
+	Environment               string `json:"environment"` // development or production
 }
 
 var BotConfig Config
@@ -54,9 +61,13 @@ func main() {
 	log := logger.GetLoggerFromContext(ctx)
 	db := database.NewProvider()
 
-	if BotConfig.DeveloperMode {
+	if BotConfig.Environment == "development" {
 		log.Warn("Running in developer mode!")
 	}
+
+	log.Debug("Initializing Sentry")
+	initSentry(BotConfig.SentryConfig.DSN, BotConfig.Environment, BotConfig.SentryConfig.Release, BotConfig.SentryConfig.Debug)
+	defer sentry.Flush(2 * time.Second)
 
 	log.Debug("Initializing MySQL databases")
 	err := db.InitMySQLDatabases(ctx, BotConfig.MysqlConfig)
@@ -82,7 +93,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.DeveloperMode)
+	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment)
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
@@ -172,5 +183,19 @@ func main() {
 	err = session.Close()
 	if err != nil {
 		log.Panic("Could not close session", err)
+	}
+}
+
+func initSentry(dsn, environment, release string, debug bool) {
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn:              dsn,
+		Environment:      environment,
+		Release:          release,
+		Debug:            debug,
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+	})
+	if err != nil {
+		logger.Logger.WithError(err).Error("Could not initialize sentry")
 	}
 }

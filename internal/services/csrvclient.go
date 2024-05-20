@@ -10,12 +10,12 @@ import (
 )
 
 type CsrvClient struct {
-	Secret        string
-	DeveloperMode bool
+	Secret      string
+	Environment string
 }
 
-func NewCsrvClient(secret string, developerMode bool) *CsrvClient {
-	return &CsrvClient{Secret: secret, DeveloperMode: developerMode}
+func NewCsrvClient(secret string, environment string) *CsrvClient {
+	return &CsrvClient{Secret: secret, Environment: environment}
 }
 
 type VoucherResponse struct {
@@ -26,7 +26,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	log := logger.GetLoggerFromContext(ctx)
 	log.Debug("Generating CSRV voucher")
 
-	if c.DeveloperMode {
+	if c.Environment == "development" {
 		return fmt.Sprintf("DEV-%d", rand.Int()), nil
 	}
 
