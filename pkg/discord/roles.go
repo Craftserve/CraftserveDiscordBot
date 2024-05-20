@@ -4,6 +4,7 @@ import (
 	"context"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
+	"strconv"
 )
 
 func HasPermission(ctx context.Context, session *discordgo.Session, member *discordgo.Member, guildId string, permission int64) bool {
@@ -47,4 +48,31 @@ func HasAdminPermissions(ctx context.Context, session *discordgo.Session, member
 		return true
 	}
 	return false
+}
+
+const LevelPrefix = "Poziom "
+
+func GetMemberLevel(ctx context.Context, session *discordgo.Session, member *discordgo.Member, guildId string) (int, error) {
+	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId).WithUser(member.User.ID)
+	log.Debug("Checking member level")
+
+	for _, roleId := range member.Roles {
+		role, err := session.State.Role(guildId, roleId)
+		if err != nil {
+			log.WithError(err).Error("GetMemberLevel#session.State.Role")
+			return 0, err
+		}
+
+		if len(role.Name) > len(LevelPrefix) && role.Name[:len(LevelPrefix)] == LevelPrefix {
+			level, err := strconv.Atoi(role.Name[len(LevelPrefix):])
+			if err != nil {
+				log.WithError(err).Error("GetMemberLevel#strconv.Atoi")
+				return 0, err
+			}
+
+			return level, nil
+		}
+	}
+
+	return 0, nil
 }
