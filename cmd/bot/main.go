@@ -59,7 +59,6 @@ func init() {
 func main() {
 	ctx := pkg.CreateContext()
 	log := logger.GetLoggerFromContext(ctx)
-	db := database.NewProvider()
 
 	if BotConfig.Environment == "development" {
 		log.Warn("Running in developer mode!")
@@ -69,6 +68,7 @@ func main() {
 	initSentry(BotConfig.SentryConfig.DSN, BotConfig.Environment, BotConfig.SentryConfig.Release, BotConfig.SentryConfig.Debug)
 	defer sentry.Flush(2 * time.Second)
 
+	db := database.NewProvider()
 	log.Debug("Initializing MySQL databases")
 	err := db.InitMySQLDatabases(ctx, BotConfig.MysqlConfig)
 	if err != nil {
