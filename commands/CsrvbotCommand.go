@@ -229,6 +229,10 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 								Name:  "message-giveaway",
 								Value: "message",
 							},
+							{
+								Name:  "unconditional-giveaway",
+								Value: "unconditional",
+							},
 						},
 					},
 				},
@@ -381,11 +385,15 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		}
 		log.Debug("Starting message giveaway")
 		go h.GiveawayService.FinishMessageGiveaway(ctx, s, guild.ID)
+	case "unconditional":
+		log.Debug("Starting unconditional giveaway")
+		go h.GiveawayService.FinishUnconditionalGiveaway(ctx, s, guild.ID)
 	}
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
 
 	log.Debug("Creating missing giveaways")
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
+	h.GiveawayService.CreateUnconditionalGiveaway(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
