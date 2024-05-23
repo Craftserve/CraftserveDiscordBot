@@ -5,7 +5,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
-	"runtime"
 )
 
 var Logger = logrus.New()
@@ -24,13 +23,9 @@ func ConfigureLogger() {
 	Formatter := new(logrus.TextFormatter)
 	Formatter.TimestampFormat = "02-01-2006 15:04:05"
 	Formatter.FullTimestamp = true
-	Formatter.CallerPrettyfier = func(f *runtime.Frame) (string, string) {
-		return "", ""
-	}
 
 	Logger.SetLevel(logrus.DebugLevel)
 	Logger.SetFormatter(Formatter)
-	Logger.ReportCaller = true
 
 	Logger.AddHook(NewSentryHook([]logrus.Level{
 		logrus.PanicLevel,

@@ -25,7 +25,6 @@ func (h *SentryHook) Fire(entry *logrus.Entry) error {
 	localHub := getOrCreateLocalHub(entry.Context)
 	localScope := localHub.Scope()
 	localScope.SetLevel(sentryLevel)
-	localScope.SetExtra("caller", entry.Caller)
 
 	if sentryLevel == sentry.LevelFatal || sentryLevel == sentry.LevelError {
 		localScope.SetExtra("fields", entry.Data)
@@ -61,7 +60,11 @@ func fromLogrusLevel(level logrus.Level) sentry.Level {
 	}
 }
 
-func getOrCreateLocalHub(ctx context.Context) *sentry.Hub { // FIXME: sometimes throws panic: runtime error: invalid memory address or nil pointer dereference (when trying to get something from context)
+func getOrCreateLocalHub(ctx context.Context) *sentry.Hub {
+	if ctx == nil {
+		return sentry.CurrentHub().Clone()
+	}
+
 	if sentry.HasHubOnContext(ctx) {
 		return sentry.GetHubFromContext(ctx)
 	} else {

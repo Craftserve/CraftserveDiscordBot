@@ -359,6 +359,7 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 	guild, err := s.Guild(i.GuildID)
 	if err != nil {
 		log.WithError(err).Error("handleStart s.Guild")
+		return
 	}
 
 	switch giveawayType {
