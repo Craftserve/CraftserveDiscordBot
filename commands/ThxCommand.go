@@ -136,22 +136,8 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.SuccessButton,
-							CustomID: "accept",
-							Emoji: &discordgo.ComponentEmoji{
-								Name: "✅",
-							},
-						},
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.DangerButton,
-							CustomID: "reject",
-							Emoji: &discordgo.ComponentEmoji{
-								Name: "⛔",
-							},
-						},
+						discord.ConstructAcceptButton(false),
+						discord.ConstructRejectButton(false),
 					},
 				},
 			},

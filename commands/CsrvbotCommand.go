@@ -367,7 +367,6 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		log.Debug("Starting thx giveaway")
 		go func() {
 			h.GiveawayService.FinishGiveaway(ctx, s, guild.ID)
-			h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
 		}()
 	case "message":
 		serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
@@ -592,13 +591,6 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 	}
 	log.Infof("%s set giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do ogłoszeń giveawaya na "+channel.Mention())
-	guild, err := s.Guild(i.GuildID)
-	if err != nil {
-		log.WithError(err).Error("handleGiveawayChannelSet s.Guild", err)
-		return
-	}
-	log.Debug("Creating missing giveaways")
-	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {

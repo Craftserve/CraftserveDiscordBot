@@ -41,7 +41,8 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetGiveawayForGuild")
 		return
 	}
-	_, err = s.Guild(guildId)
+
+	guild, err := s.Guild(guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#s.Guild")
 		return
@@ -102,14 +103,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		Components: []discordgo.MessageComponent{
 			&discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
-					&discordgo.Button{
-						Label:    "Kliknij tutaj, aby wyświetlić kod",
-						Style:    discordgo.SuccessButton,
-						CustomID: "thxwinnercode",
-						Emoji: &discordgo.ComponentEmoji{
-							Name: "🎉",
-						},
-					},
+					discord.ConstructThxWinnerCodeButton(false),
 				},
 			},
 		},
@@ -126,6 +120,8 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	}
 	log.Infof("Giveaway ended with a winner: %s", member.User.Username)
 
+	log.Info("Creating missing giveaways")
+	h.CreateMissingGiveaways(ctx, s, guild)
 }
 
 func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Session) {
@@ -140,10 +136,6 @@ func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Sess
 	}
 	for _, giveaway := range giveaways {
 		h.FinishGiveaway(ctx, s, giveaway.GuildId)
-		guild, err := s.Guild(giveaway.GuildId)
-		if err == nil {
-			h.CreateMissingGiveaways(ctx, s, guild)
-		}
 	}
 
 }
@@ -316,14 +308,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		Components: []discordgo.MessageComponent{
 			&discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
-					&discordgo.Button{
-						Label:    "Kliknij tutaj, aby wyświetlić kod",
-						Style:    discordgo.SuccessButton,
-						CustomID: "msgwinnercode",
-						Emoji: &discordgo.ComponentEmoji{
-							Name: "🎉",
-						},
-					},
+					discord.ConstructMessageWinnerCodeButton(false),
 				},
 			},
 		},
@@ -476,20 +461,32 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		}
 	}
 
+	// Disable join button
+	joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, winnerNames)
+	_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+		Channel: giveawayChannelId,
+		ID:      giveaway.InfoMessageId,
+		Embed:   joinEmbed,
+		Components: &[]discordgo.MessageComponent{
+			&discordgo.ActionsRow{
+				Components: []discordgo.MessageComponent{
+					discord.ConstructUnconditionalJoinButton(true),
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageEditComplex")
+	}
+
+	// Send winners message
 	winnersEmbed := discord.ConstructUnconditionalGiveawayWinnersEmbed(h.CraftserveUrl, winnerIds)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 		Embed: winnersEmbed,
 		Components: []discordgo.MessageComponent{
 			&discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
-					&discordgo.Button{
-						Label:    "Kliknij tutaj, aby wyświetlić kod",
-						Style:    discordgo.SuccessButton,
-						CustomID: "unconditionalwinnercode",
-						Emoji: &discordgo.ComponentEmoji{
-							Name: "🎉",
-						},
-					},
+					discord.ConstructUnconditionalWinnerCodeButton(false),
 				},
 			},
 		},
@@ -562,14 +559,7 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
-						&discordgo.Button{
-							Label:    "Weź udział",
-							Style:    discordgo.SuccessButton,
-							CustomID: "unconditionalgiveawayjoin",
-							Emoji: &discordgo.ComponentEmoji{
-								Name: "🙋",
-							},
-						},
+						discord.ConstructUnconditionalJoinButton(false),
 					},
 				},
 			},
