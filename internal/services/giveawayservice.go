@@ -99,14 +99,8 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 
 	mainEmbed := discord.ConstructChannelWinnerEmbed(h.CraftserveUrl, member.User.Username)
 	message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
-		Embed: mainEmbed,
-		Components: []discordgo.MessageComponent{
-			&discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discord.ConstructThxWinnerCodeButton(false),
-				},
-			},
-		},
+		Embed:      mainEmbed,
+		Components: discord.ConstructThxWinnerComponents(false),
 	})
 
 	if err != nil {
@@ -304,14 +298,8 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 
 	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(h.CraftserveUrl, winnerNames)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
-		Embed: mainEmbed,
-		Components: []discordgo.MessageComponent{
-			&discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discord.ConstructMessageWinnerCodeButton(false),
-				},
-			},
-		},
+		Embed:      mainEmbed,
+		Components: discord.ConstructMessageWinnerComponents(false),
 	})
 	if err != nil {
 		log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendComplex")
@@ -473,17 +461,12 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 
 	// Disable join button
 	joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, winnerNames)
+	component := discord.ConstructUnconditionalJoinComponents(true)
 	_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
-		Channel: giveawayChannelId,
-		ID:      giveaway.InfoMessageId,
-		Embed:   joinEmbed,
-		Components: &[]discordgo.MessageComponent{
-			&discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discord.ConstructUnconditionalJoinButton(true),
-				},
-			},
-		},
+		Channel:    giveawayChannelId,
+		ID:         giveaway.InfoMessageId,
+		Embed:      joinEmbed,
+		Components: &component,
 	})
 	if err != nil {
 		log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageEditComplex")
@@ -492,14 +475,8 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	// Send winners message
 	winnersEmbed := discord.ConstructUnconditionalGiveawayWinnersEmbed(h.CraftserveUrl, winnerIds)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
-		Embed: winnersEmbed,
-		Components: []discordgo.MessageComponent{
-			&discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discord.ConstructUnconditionalWinnerCodeButton(false),
-				},
-			},
-		},
+		Embed:      winnersEmbed,
+		Components: discord.ConstructUnconditionalWinnerComponents(false),
 	})
 	if err != nil {
 		log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageSendComplex")
@@ -563,14 +540,8 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 
 		mainEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, make([]string, 0))
 		message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
-			Embed: mainEmbed,
-			Components: []discordgo.MessageComponent{
-				&discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discord.ConstructUnconditionalJoinButton(false),
-					},
-				},
-			},
+			Embed:      mainEmbed,
+			Components: discord.ConstructUnconditionalJoinComponents(false),
 		})
 
 		err = h.UnconditionalGiveawayRepo.InsertGiveaway(ctx, guild.ID, message.ID)

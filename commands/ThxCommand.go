@@ -135,10 +135,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		Data: &discordgo.InteractionResponseData{
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discord.ConstructAcceptButton(false),
-						discord.ConstructRejectButton(false),
-					},
+					Components: discord.ConstructAcceptRejectComponents(false),
 				},
 			},
 			Embeds: []*discordgo.MessageEmbed{embed},

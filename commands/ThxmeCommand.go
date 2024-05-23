@@ -121,10 +121,7 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 		Data: &discordgo.InteractionResponseData{
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discord.ConstructAcceptButton(false),
-						discord.ConstructRejectButton(false),
-					},
+					Components: discord.ConstructAcceptRejectComponents(false),
 				},
 			},
 			Content: fmt.Sprintf("%s, czy chcesz podziękować użytkownikowi %s?", selectedUser.Mention(), author.Username),
