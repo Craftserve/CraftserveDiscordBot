@@ -502,6 +502,15 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	}
 
 	log.Infof("Unconditional giveaway ended with winners: %s", strings.Join(winnerNames, ", "))
+
+	// Create new unconditional giveaway
+	log.Info("Creating missing unconditional giveaways")
+	guild, err := session.Guild(guildId)
+	if err != nil {
+		log.WithError(err).Error("FinishUnconditionalGiveaway#session.Guild")
+		return
+	}
+	h.CreateUnconditionalGiveaway(ctx, session, guild)
 }
 
 func (h *GiveawayService) FinishUnconditionalGiveaways(ctx context.Context, s *discordgo.Session) {
@@ -517,12 +526,6 @@ func (h *GiveawayService) FinishUnconditionalGiveaways(ctx context.Context, s *d
 
 	for _, giveaway := range giveaways {
 		h.FinishUnconditionalGiveaway(ctx, s, giveaway.GuildId)
-		guild, err := s.Guild(giveaway.GuildId)
-		if err == nil {
-			h.CreateUnconditionalGiveaway(ctx, s, guild)
-		} else {
-			log.WithError(err).Error("FinishUnconditionalGiveaways#s.Guild")
-		}
 	}
 }
 

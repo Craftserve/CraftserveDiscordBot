@@ -781,15 +781,6 @@ func (h CsrvbotCommand) handleUnconditionalGiveawayChannelSet(ctx context.Contex
 
 	log.Infof("%s set unconditional giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do bezwarunkowych giveawayów na "+channel.Mention())
-
-	guild, err := s.Guild(i.GuildID)
-	if err != nil {
-		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet s.Guild", err)
-		return
-	}
-
-	log.Debug("Creating missing giveaway")
-	h.GiveawayService.CreateUnconditionalGiveaway(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleUnconditionalWinnersCountSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
