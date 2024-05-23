@@ -355,6 +355,19 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	}
 
 	if len(participants) == 0 {
+		// Disable join button
+		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, []string{})
+		component := discord.ConstructUnconditionalJoinComponents(true)
+		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			Channel:    giveawayChannelId,
+			ID:         giveaway.InfoMessageId,
+			Embed:      joinEmbed,
+			Components: &component,
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageEditComplex")
+		}
+
 		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w loterii.")
 		if err != nil {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageSend")
@@ -374,6 +387,19 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	}
 
 	if len(participants) < serverConfig.UnconditionalGiveawayWinners {
+		// Disable join button
+		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, []string{})
+		component := discord.ConstructUnconditionalJoinComponents(true)
+		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			Channel:    giveawayChannelId,
+			ID:         giveaway.InfoMessageId,
+			Embed:      joinEmbed,
+			Components: &component,
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageEditComplex")
+		}
+
 		log.Debug("Not enough participants for the giveaway, ending with less winners")
 		message, err := session.ChannelMessageSend(giveawayChannelId, "Za mało uczestników, nie można wyłonić wszystkich zwycięzców.")
 		if err != nil {
@@ -385,6 +411,10 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		if err != nil {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.UpdateGiveaway")
 		}
+
+		// Create new unconditional giveaway
+		log.Info("Creating missing unconditional giveaways")
+		h.CreateUnconditionalGiveaway(ctx, session, guild)
 
 		return
 	}
