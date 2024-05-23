@@ -354,6 +354,12 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		return
 	}
 
+	guild, err := session.Guild(guildId)
+	if err != nil {
+		log.WithError(err).Error("FinishUnconditionalGiveaway#session.Guild")
+		return
+	}
+
 	participants, err := h.UnconditionalGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
 	if err != nil {
 		log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.GetParticipantsForGiveaway")
@@ -371,6 +377,10 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		if err != nil {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.UpdateGiveaway")
 		}
+
+		// Create new unconditional giveaway
+		log.Info("Creating missing unconditional giveaways")
+		h.CreateUnconditionalGiveaway(ctx, session, guild)
 
 		return
 	}
@@ -505,11 +515,6 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 
 	// Create new unconditional giveaway
 	log.Info("Creating missing unconditional giveaways")
-	guild, err := session.Guild(guildId)
-	if err != nil {
-		log.WithError(err).Error("FinishUnconditionalGiveaway#session.Guild")
-		return
-	}
 	h.CreateUnconditionalGiveaway(ctx, session, guild)
 }
 
