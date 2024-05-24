@@ -71,14 +71,13 @@ func (repo *UnconditionalGiveawayRepo) GetParticipantsForGiveaway(ctx context.Co
 	return participants, nil
 }
 
-func (repo *UnconditionalGiveawayRepo) GetParticipantNamesForGiveaway(ctx context.Context, giveawayId int) ([]string, error) {
-	var participantNames []string
-	_, err := repo.mysql.WithContext(ctx).Select(&participantNames, "SELECT user_name FROM unconditional_participants WHERE unconditional_giveaway_id = ?", giveawayId)
+func (repo *UnconditionalGiveawayRepo) CountParticipantsForGiveaway(ctx context.Context, giveawayId int) (int, error) {
+	count, err := repo.mysql.WithContext(ctx).SelectInt("SELECT COUNT(*) FROM unconditional_participants WHERE unconditional_giveaway_id = ?", giveawayId)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return participantNames, nil
+	return int(count), nil
 }
 
 func (repo *UnconditionalGiveawayRepo) InsertGiveaway(ctx context.Context, guildId, messageId string) error {

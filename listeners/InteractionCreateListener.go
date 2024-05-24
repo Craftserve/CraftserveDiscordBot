@@ -211,13 +211,13 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		// Edit embed to show new participant
 		log.Debug("Editing message to show new participant...")
 
-		participantNames, err := h.UnconditionalGiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+		participantsCount, err := h.UnconditionalGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetParticipantNamesForGiveaway: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.CountParticipantsForGiveaway: %v", err)
 			return
 		}
 
-		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, participantNames)
+		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, participantsCount)
 		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 		if err != nil {
 			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)

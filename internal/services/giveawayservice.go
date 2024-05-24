@@ -356,7 +356,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 
 	if len(participants) == 0 {
 		// Disable join button
-		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, []string{})
+		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, 0)
 		component := discord.ConstructUnconditionalJoinComponents(true)
 		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 			Channel:    giveawayChannelId,
@@ -388,7 +388,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 
 	if len(participants) < serverConfig.UnconditionalGiveawayWinners {
 		// Disable join button
-		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, []string{})
+		joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, 0)
 		component := discord.ConstructUnconditionalJoinComponents(true)
 		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 			Channel:    giveawayChannelId,
@@ -490,7 +490,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	}
 
 	// Disable join button
-	joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, winnerNames)
+	joinEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, len(participants))
 	component := discord.ConstructUnconditionalJoinComponents(true)
 	_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 		Channel:    giveawayChannelId,
@@ -568,7 +568,7 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 	if errors.Is(err, sql.ErrNoRows) {
 		log.Debug("Unconditional giveaway for guild does not exist, creating...")
 
-		mainEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, make([]string, 0))
+		mainEmbed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, 0)
 		message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 			Embed:      mainEmbed,
 			Components: discord.ConstructUnconditionalJoinComponents(false),
