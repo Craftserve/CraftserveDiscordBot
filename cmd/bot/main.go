@@ -84,6 +84,7 @@ func main() {
 	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
 	var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
 	var unconditionalGiveawayRepo = repos.NewUnconditionalGiveawayRepo(dbMap)
+	var conditionalGiveawayRepo = repos.NewConditionalGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 
@@ -95,7 +96,7 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment)
 	var githubClient = services.NewGithubClient()
-	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo)
+	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo, conditionalGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 	var savedRoleService = services.NewSavedRoleService(userRepo)
 
@@ -169,7 +170,7 @@ func main() {
 	}
 
 	err = c.AddFunc(BotConfig.ConditionalGiveawayCron, func() {
-		// TODO: Implement conditional giveaway cron job
+		giveawayService.FinishConditionalGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Errorf("Could not set conditional giveaway cron job: %v", err)
