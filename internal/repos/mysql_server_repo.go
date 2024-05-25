@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/go-gorp/gorp"
 )
 
@@ -16,21 +17,24 @@ func NewServerRepo(mysql *gorp.DbMap) *ServerRepo {
 }
 
 type ServerConfig struct {
-	Id                           int    `db:"id,primarykey,autoincrement"`
-	GuildId                      string `db:"guild_id,size:255"`
-	AdminRoleId                  string `db:"admin_role_id,size:255"`
-	MainChannel                  string `db:"main_channel,size:255"`
-	ThxInfoChannel               string `db:"thx_info_channel,size:255"`
-	HelperRoleId                 string `db:"helper_role_id,size:255"`
-	HelperRoleThxesNeeded        int    `db:"helper_role_thxes_needed"`
-	MessageGiveawayWinners       int    `db:"message_giveaway_winners,default:0"`
-	UnconditionalGiveawayChannel string `db:"unconditional_giveaway_channel,size:255"`
-	UnconditionalGiveawayWinners int    `db:"unconditional_giveaway_winners,default:0"`
+	Id                           int             `db:"id,primarykey,autoincrement"`
+	GuildId                      string          `db:"guild_id,size:255"`
+	AdminRoleId                  string          `db:"admin_role_id,size:255"`
+	MainChannel                  string          `db:"main_channel,size:255"`
+	ThxInfoChannel               string          `db:"thx_info_channel,size:255"`
+	HelperRoleId                 string          `db:"helper_role_id,size:255"`
+	HelperRoleThxesNeeded        int             `db:"helper_role_thxes_needed"`
+	MessageGiveawayWinners       int             `db:"message_giveaway_winners,default:0"`
+	UnconditionalGiveawayChannel string          `db:"unconditional_giveaway_channel,size:255"`
+	UnconditionalGiveawayWinners int             `db:"unconditional_giveaway_winners,default:0"`
+	ConditionalGiveawayChannel   string          `db:"conditional_giveaway_channel,size:255"`
+	ConditionalGiveawayWinners   int             `db:"conditional_giveaway_winners,default:0"`
+	ConditionalGiveawayLevels    json.RawMessage `db:"conditional_giveaway_levels"`
 }
 
 func (repo *ServerRepo) GetServerConfigForGuild(ctx context.Context, guildId string) (ServerConfig, error) {
 	var serverConfig ServerConfig
-	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed, message_giveaway_winners, unconditional_giveaway_channel, unconditional_giveaway_winners FROM server_configs WHERE guild_id = ?", guildId)
+	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed, message_giveaway_winners, unconditional_giveaway_channel, unconditional_giveaway_winners, conditional_giveaway_channel, conditional_giveaway_winners, conditional_giveaway_levels FROM server_configs WHERE guild_id = ?", guildId)
 	if err != nil {
 		return ServerConfig{}, err
 	}
@@ -81,4 +85,20 @@ func (repo *ServerRepo) GetGuildsWithMessageGiveawaysEnabled(ctx context.Context
 		return nil, err
 	}
 	return guilds, nil
+}
+
+func (repo *ServerRepo) GetConditionalGiveawayLevels(ctx context.Context, guildId string) ([]int, error) {
+	var levelsJson json.RawMessage
+	err := repo.mysql.WithContext(ctx).SelectOne(&levelsJson, "SELECT conditional_giveaway_levels FROM server_configs WHERE guild_id = ?", guildId)
+	if err != nil {
+		return nil, err
+	}
+
+	var levels []int
+	err = json.Unmarshal(levelsJson, &levels)
+	if err != nil {
+		return nil, err
+	}
+
+	return levels, nil
 }
