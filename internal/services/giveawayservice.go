@@ -20,9 +20,10 @@ type GiveawayService struct {
 	GiveawayRepo              repos.GiveawayRepo
 	MessageGiveawayRepo       repos.MessageGiveawayRepo
 	UnconditionalGiveawayRepo repos.UnconditionalGiveawayRepo
+	ConditionalGiveawayRepo   repos.ConditionalGiveawayRepo
 }
 
-func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo) *GiveawayService {
+func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo, conditionalGiveawayRepo *repos.ConditionalGiveawayRepo) *GiveawayService {
 	return &GiveawayService{
 		CsrvClient:                *csrvClient,
 		CraftserveUrl:             craftserveUrl,
@@ -30,6 +31,7 @@ func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo
 		GiveawayRepo:              *giveawayRepo,
 		MessageGiveawayRepo:       *messageGiveawayRepo,
 		UnconditionalGiveawayRepo: *unconditionalGiveawayRepo,
+		ConditionalGiveawayRepo:   *conditionalGiveawayRepo,
 	}
 }
 
@@ -573,10 +575,304 @@ func (h *GiveawayService) CreateUnconditionalGiveaway(ctx context.Context, s *di
 			Embed:      mainEmbed,
 			Components: discord.ConstructUnconditionalJoinComponents(false),
 		})
+		if err != nil {
+			log.WithError(err).Error("CreateUnconditionalGiveaway#s.ChannelMessageSendComplex")
+			return
+		}
 
 		err = h.UnconditionalGiveawayRepo.InsertGiveaway(ctx, guild.ID, message.ID)
 		if err != nil {
 			log.WithError(err).Error("CreateUnconditionalGiveaway#h.UnconditionalGiveawayRepo.InsertGiveaway")
+			return
+		}
+	}
+}
+
+func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session *discordgo.Session, guildId string) {
+	log := logger.GetLoggerFromContext(ctx)
+	log.Debug("Finishing conditional giveaway for guild")
+
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildId)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ServerRepo.GetServerConfigForGuild")
+		return
+	}
+
+	if serverConfig.ConditionalGiveawayWinners == 0 {
+		log.Debug("Conditional giveaway winners is set to 0, skipping...")
+		return
+	}
+
+	giveawayChannelId := serverConfig.ConditionalGiveawayChannel
+	_, err = session.Channel(giveawayChannelId)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#session.Channel")
+		return
+	}
+
+	giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayForGuild(ctx, guildId)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.GetGiveawayForGuild")
+		return
+	}
+
+	guild, err := session.Guild(guildId)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#session.Guild")
+		return
+	}
+
+	participants, err := h.ConditionalGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.GetParticipantsForGiveaway")
+		return
+	}
+
+	if len(participants) == 0 {
+		// Disable join button
+		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, 0)
+		component := discord.ConstructConditionalJoinComponents(true)
+		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			Channel:    giveawayChannelId,
+			ID:         giveaway.InfoMessageId,
+			Embed:      joinEmbed,
+			Components: &component,
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageEditComplex")
+		}
+
+		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w loterii.")
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSend")
+		}
+
+		log.Infof("Conditional giveaway ended without any participants.")
+		err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+		}
+
+		// Create new conditional giveaway
+		log.Info("Creating missing conditional giveaways")
+		h.CreateConditionalGiveaway(ctx, session, guild)
+
+		return
+	}
+
+	if len(participants) < serverConfig.ConditionalGiveawayWinners {
+		// Disable join button
+		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, 0)
+		component := discord.ConstructConditionalJoinComponents(true)
+		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			Channel:    giveawayChannelId,
+			ID:         giveaway.InfoMessageId,
+			Embed:      joinEmbed,
+			Components: &component,
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageEditComplex")
+		}
+
+		log.Debug("Not enough participants for the giveaway, ending with less winners")
+		message, err := session.ChannelMessageSend(giveawayChannelId, "Za mało uczestników, nie można wyłonić wszystkich zwycięzców.")
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSend")
+		}
+
+		log.Infof("Conditional giveaway ended without any winners.")
+		err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+		}
+
+		// Create new conditional giveaway
+		log.Info("Creating missing conditional giveaways")
+		h.CreateConditionalGiveaway(ctx, session, guild)
+
+		return
+	}
+
+	winnerIds := make([]string, serverConfig.ConditionalGiveawayWinners)
+
+	for i := 0; i < serverConfig.ConditionalGiveawayWinners; i++ {
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		winner := participants[r.Intn(len(participants))]
+		member, err := session.GuildMember(guildId, winner.UserId)
+		if err != nil {
+			var memberIndex int
+			for j, p := range participants {
+				if p.UserId == winner.UserId {
+					memberIndex = j
+					break
+				}
+			}
+
+			log.WithError(err).Error("FinishConditionalGiveaway#session.GuildMember")
+			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
+			i--
+			continue
+		}
+
+		memberLevel, err := discord.GetMemberLevel(ctx, session, member, guildId)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#discord.GetMemberLevel")
+			continue
+		}
+
+		if memberLevel < giveaway.Level {
+			log.WithField("userId", winner.UserId).Debug("User has lower level than required, rolling again")
+			i--
+			continue
+		}
+
+		hasWon, err := h.ConditionalGiveawayRepo.HasWonGiveawayByMessageId(ctx, giveaway.InfoMessageId, winner.UserId)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.HasWonGiveawayByMessageId")
+			continue
+		}
+
+		if hasWon {
+			log.WithField("userId", winner.UserId).Debug("User has already won the giveaway, rolling again")
+			i--
+			continue
+		}
+
+		winnerIds[i] = winner.UserId
+		code, err := h.CsrvClient.GetCSRVCode(ctx)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#h.CsrvClient.GetCSRVCode")
+			_, err = session.ChannelMessageSend(giveawayChannelId, "Błąd API Craftserve, nie udało się pobrać kodu!")
+			if err != nil {
+				log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSend")
+				return
+			}
+
+			return
+		}
+
+		log.Debug("Inserting conditional giveaway winner into database")
+		err = h.ConditionalGiveawayRepo.InsertWinner(ctx, giveaway.Id, winner.UserId, code)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.InsertWinner")
+			continue
+		}
+
+		log.Debug("Sending DM to conditional giveaway winner")
+
+		dmEmbed := discord.ConstructWinnerEmbed(h.CraftserveUrl, code)
+		dm, err := session.UserChannelCreate(winner.UserId)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.UserChannelCreate")
+			continue
+		}
+
+		_, err = session.ChannelMessageSendEmbed(dm.ID, dmEmbed)
+		if err != nil {
+			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSendEmbed")
+		}
+	}
+
+	// Disable join button
+	joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, len(participants))
+	component := discord.ConstructConditionalJoinComponents(true)
+	_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+		Channel:    giveawayChannelId,
+		ID:         giveaway.InfoMessageId,
+		Embed:      joinEmbed,
+		Components: &component,
+	})
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageEditComplex")
+	}
+
+	// Send winners message
+	winnersEmbed := discord.ConstructConditionalGiveawayWinnersEmbed(h.CraftserveUrl, giveaway.Level, winnerIds)
+	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
+		Embed:      winnersEmbed,
+		Components: discord.ConstructConditionalWinnerComponents(false),
+	})
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSendComplex")
+	}
+
+	log.Debug("Updating conditional giveaway in database with winners")
+	err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+	}
+
+	log.Infof("Conditional giveaway ended with winners: %s", strings.Join(winnerIds, ", "))
+
+	// Create new conditional giveaway
+	log.Info("Creating missing conditional giveaways")
+	h.CreateConditionalGiveaway(ctx, session, guild)
+}
+
+func (h *GiveawayService) FinishConditionalGiveaways(ctx context.Context, session *discordgo.Session) {
+	log := logger.GetLoggerFromContext(ctx)
+	giveaways, err := h.ConditionalGiveawayRepo.GetUnfinishedGiveaways(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return
+		}
+		log.WithError(err).Error("FinishConditionalGiveaways#h.ConditionalGiveawayRepo.GetUnfinishedGiveaways")
+		return
+	}
+
+	for _, giveaway := range giveaways {
+		h.FinishConditionalGiveaway(ctx, session, giveaway.GuildId)
+	}
+}
+
+func (h *GiveawayService) CreateConditionalGiveaway(ctx context.Context, session *discordgo.Session, guild *discordgo.Guild) {
+	log := logger.GetLoggerFromContext(ctx)
+	log.Info("Creating conditional giveaway for guild")
+
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
+	if err != nil {
+		log.WithError(err).Error("CreateConditionalGiveaway#h.ServerRepo.GetServerConfigForGuild")
+		return
+	}
+
+	giveawayChannelId := serverConfig.ConditionalGiveawayChannel
+	_, err = session.Channel(giveawayChannelId)
+	if err != nil {
+		log.WithError(err).Error("CreateConditionalGiveaway#session.Channel")
+		return
+	}
+
+	_, err = h.ConditionalGiveawayRepo.GetGiveawayForGuild(ctx, guild.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.WithError(err).Error("CreateConditionalGiveaway#h.ConditionalGiveawayRepo.GetGiveawayForGuild")
+		return
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		log.Debug("Conditional giveaway for guild does not exist, creating...")
+
+		log.Debug("Getting one of the levels")
+		levels, err := h.ServerRepo.GetConditionalGiveawayLevels(ctx, guild.ID)
+		if err != nil {
+			log.WithError(err).Error("CreateConditionalGiveaway#h.ServerRepo.GetConditionalGiveawayLevels")
+			return
+		}
+
+		level := levels[rand.Intn(len(levels))]
+
+		mainEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, level, 0)
+		message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
+			Embed:      mainEmbed,
+			Components: discord.ConstructConditionalJoinComponents(false),
+		})
+		if err != nil {
+			log.WithError(err).Error("CreateConditionalGiveaway#session.ChannelMessageSendComplex")
+			return
+		}
+
+		err = h.ConditionalGiveawayRepo.InsertGiveaway(ctx, guild.ID, message.ID, level)
+		if err != nil {
+			log.WithError(err).Error("CreateConditionalGiveaway#h.ConditionalGiveawayRepo.InsertGiveaway")
 			return
 		}
 	}
