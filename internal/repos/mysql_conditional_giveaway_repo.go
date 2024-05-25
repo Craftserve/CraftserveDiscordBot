@@ -24,7 +24,7 @@ type ConditionalGiveaway struct {
 	EndTime       *time.Time `db:"end_time"`
 	GuildId       string     `db:"guild_id,size:255"`
 	InfoMessageId string     `db:"info_message_id,size:255"`
-	Level         int        `db:"level,default:0"`
+	Level         int        `db:"level"`
 }
 
 type ConditionalGiveawayWinner struct {

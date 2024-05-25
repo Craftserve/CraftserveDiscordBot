@@ -610,15 +610,21 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 		return
 	}
 
-	giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayForGuild(ctx, guildId)
-	if err != nil {
-		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.GetGiveawayForGuild")
-		return
-	}
-
 	guild, err := session.Guild(guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishConditionalGiveaway#session.Guild")
+		return
+	}
+
+	giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayForGuild(ctx, guildId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Debug("Conditional giveaway for guild does not exist, creating...")
+			h.CreateConditionalGiveaway(ctx, session, guild)
+			return
+		}
+
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 
