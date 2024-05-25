@@ -186,10 +186,10 @@ func ConstructResendEmbed(url string, codes []string) *discordgo.MessageEmbed {
 	return embed
 }
 
-func ConstructUnconditionalGiveawayJoinEmbed(url string, participants []string) *discordgo.MessageEmbed {
+func ConstructUnconditionalGiveawayJoinEmbed(url string, participantsCount int) *discordgo.MessageEmbed {
 	description := "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!"
-	if len(participants) > 0 {
-		description += "\n\n**Uczestnicy: **" + strings.Join(participants, ", ")
+	if participantsCount > 0 {
+		description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
 	}
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
@@ -204,7 +204,6 @@ func ConstructUnconditionalGiveawayJoinEmbed(url string, participants []string) 
 
 func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []string) *discordgo.MessageEmbed {
 	description := "Oto zwycięzcy bezwarunkowego giveawaya! Gratulacje!"
-
 	for _, id := range participantsIds {
 		description += "\n\n- <@" + id + ">"
 	}
@@ -212,7 +211,7 @@ func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []st
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
-			Name:    "Dołącz do giveaway już teraz!",
+			Name:    "Zakończono bezwarunkowy giveaway!",
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
 		Color:       0x234d20,
