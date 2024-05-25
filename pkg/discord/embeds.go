@@ -205,13 +205,47 @@ func ConstructUnconditionalGiveawayJoinEmbed(url string, participantsCount int) 
 func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []string) *discordgo.MessageEmbed {
 	description := "Oto zwycięzcy bezwarunkowego giveawaya! Gratulacje!"
 	for _, id := range participantsIds {
-		description += "\n\n- <@" + id + ">"
+		description += "\n- <@" + id + ">"
 	}
 
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Zakończono bezwarunkowy giveaway!",
+			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+		},
+		Color:       0x234d20,
+		Description: description,
+	}
+}
+
+func ConstructConditionalGiveawayJoinEmbed(url string, level, participantsCount int) *discordgo.MessageEmbed {
+	description := fmt.Sprintf("Właśnie startuje giveaway dla osób, które posiadają poziom wyższy lub równy **%d**! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", level)
+	if participantsCount > 0 {
+		description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
+	}
+
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     url,
+			Name:    "Dołącz do warunkowego giveaway już teraz!",
+			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+		},
+		Color:       0x234d20,
+		Description: description,
+	}
+}
+
+func ConstructConditionalGiveawayWinnersEmbed(url string, level int, participantsIds []string) *discordgo.MessageEmbed {
+	description := fmt.Sprintf("Oto zwycięzcy warunkowego giveawaya dla osób o poziomie wyższym lub równym **%d**! Gratulacje!", level)
+	for _, id := range participantsIds {
+		description += "\n- <@" + id + ">"
+	}
+
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     url,
+			Name:    "Zakończono warunkowy giveaway!",
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
 		Color:       0x234d20,
