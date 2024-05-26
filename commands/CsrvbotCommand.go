@@ -995,6 +995,19 @@ func (h CsrvbotCommand) handleConditionalGiveawayLevelsSet(ctx context.Context, 
 		return
 	}
 
+	valid, err := discord.ValidateLevels(ctx, s, i.GuildID, levels)
+	if err != nil {
+		log.WithError(err).Error("handleConditionalGiveawayLevelsSet discord.ValidateLevels", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić poziomów, sprawdź czy są one poprawne")
+		return
+	}
+
+	if !valid {
+		log.Debug("Levels are not valid")
+		discord.RespondWithMessage(ctx, s, i, "Podane poziomy nie są poprawne z powodu braku odpowiadającej roli")
+		return
+	}
+
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
 		log.WithError(err).Error("handleConditionalGiveawayLevelsSet h.ServerRepo.GetServerConfigForGuild", err)
