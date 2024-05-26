@@ -634,9 +634,15 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 		return
 	}
 
+	levelRole, err := discord.GetRoleForLevel(ctx, session, guildId, giveaway.Level)
+	if err != nil {
+		log.WithError(err).Error("FinishConditionalGiveaway#discord.GetRoleForLevel")
+		return
+	}
+
 	if len(participants) == 0 {
 		// Disable join button
-		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, 0)
+		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, levelRole.ID, 0)
 		component := discord.ConstructConditionalJoinComponents(true)
 		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 			Channel:    giveawayChannelId,
@@ -668,7 +674,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 
 	if len(participants) < serverConfig.ConditionalGiveawayWinners {
 		// Disable join button
-		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, 0)
+		joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, levelRole.ID, 0)
 		component := discord.ConstructConditionalJoinComponents(true)
 		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 			Channel:    giveawayChannelId,
@@ -704,7 +710,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 	for i := 0; i < serverConfig.ConditionalGiveawayWinners; i++ {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		winner := participants[r.Intn(len(participants))]
-		member, err := session.GuildMember(guildId, winner.UserId)
+		_, err := session.GuildMember(guildId, winner.UserId)
 		if err != nil {
 			var memberIndex int
 			for j, p := range participants {
@@ -716,18 +722,6 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 
 			log.WithError(err).Error("FinishConditionalGiveaway#session.GuildMember")
 			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
-			i--
-			continue
-		}
-
-		memberLevel, err := discord.GetMemberLevel(ctx, session, member, guildId)
-		if err != nil {
-			log.WithError(err).Error("FinishConditionalGiveaway#discord.GetMemberLevel")
-			continue
-		}
-
-		if memberLevel < giveaway.Level {
-			log.WithField("userId", winner.UserId).Debug("User has lower level than required, rolling again")
 			i--
 			continue
 		}
@@ -780,7 +774,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 	}
 
 	// Disable join button
-	joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, giveaway.Level, len(participants))
+	joinEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, levelRole.ID, len(participants))
 	component := discord.ConstructConditionalJoinComponents(true)
 	_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
 		Channel:    giveawayChannelId,
@@ -793,7 +787,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 	}
 
 	// Send winners message
-	winnersEmbed := discord.ConstructConditionalGiveawayWinnersEmbed(h.CraftserveUrl, giveaway.Level, winnerIds)
+	winnersEmbed := discord.ConstructConditionalGiveawayWinnersEmbed(h.CraftserveUrl, levelRole.ID, winnerIds)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 		Embed:      winnersEmbed,
 		Components: discord.ConstructConditionalWinnerComponents(false),
@@ -865,8 +859,13 @@ func (h *GiveawayService) CreateConditionalGiveaway(ctx context.Context, session
 		}
 
 		level := levels[rand.Intn(len(levels))]
+		levelRole, err := discord.GetRoleForLevel(ctx, session, guild.ID, level)
+		if err != nil {
+			log.WithError(err).Error("CreateConditionalGiveaway#discord.GetRoleForLevel")
+			return
+		}
 
-		mainEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, level, 0)
+		mainEmbed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, levelRole.ID, 0)
 		message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
 			Embed:      mainEmbed,
 			Components: discord.ConstructConditionalJoinComponents(false),
