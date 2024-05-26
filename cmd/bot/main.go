@@ -7,6 +7,7 @@ import (
 	"csrvbot/listeners"
 	"csrvbot/pkg"
 	"csrvbot/pkg/database"
+	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
@@ -35,6 +36,7 @@ type Config struct {
 	CsrvSecret                string `json:"csrv_secret"`
 	RegisterCommands          bool   `json:"register_commands"`
 	Environment               string `json:"environment"` // development or production
+	LevelPrefix               string `json:"level_prefix"`
 }
 
 var BotConfig Config
@@ -59,6 +61,9 @@ func init() {
 func main() {
 	ctx := pkg.CreateContext()
 	log := logger.GetLoggerFromContext(ctx)
+
+	log.Debugf("Setting discord level prefix to [%s]", BotConfig.LevelPrefix)
+	discord.LevelPrefix = BotConfig.LevelPrefix
 
 	if BotConfig.Environment == "development" {
 		log.Warn("Running in developer mode!")
@@ -115,7 +120,7 @@ func main() {
 	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo, messageGiveawayRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, unconditionalGiveawayRepo)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, unconditionalGiveawayRepo, conditionalGiveawayRepo)
 	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
