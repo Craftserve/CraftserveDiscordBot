@@ -110,6 +110,9 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		log.WithError(err).Error("FinishGiveaway#s.UserChannelCreate")
 	}
 	_, err = s.ChannelMessageSendEmbed(dm.ID, dmEmbed)
+	if err != nil && !discord.EqualError(err, discordgo.ErrCodeCannotSendMessagesToThisUser) {
+		log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSendEmbed")
+	}
 
 	mainEmbed := discord.ConstructChannelWinnerEmbed(h.CraftserveUrl, member.User.Username)
 	message, err := s.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
@@ -298,7 +301,7 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 			continue
 		}
 		_, err = session.ChannelMessageSendEmbed(dm.ID, dmEmbed)
-		if err != nil {
+		if err != nil && !discord.EqualError(err, discordgo.ErrCodeCannotSendMessagesToThisUser) {
 			log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendEmbed")
 		}
 
@@ -502,7 +505,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		}
 
 		_, err = session.ChannelMessageSendEmbed(dm.ID, dmEmbed)
-		if err != nil {
+		if err != nil && !discord.EqualError(err, discordgo.ErrCodeCannotSendMessagesToThisUser) {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageSendEmbed")
 		}
 	}
@@ -784,7 +787,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 		}
 
 		_, err = session.ChannelMessageSendEmbed(dm.ID, dmEmbed)
-		if err != nil {
+		if err != nil && !discord.EqualError(err, discordgo.ErrCodeCannotSendMessagesToThisUser) {
 			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSendEmbed")
 		}
 	}
