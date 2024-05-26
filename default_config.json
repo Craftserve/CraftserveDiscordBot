@@ -20,5 +20,6 @@
   "system_token": "token bota",
   "csrv_secret": "secret api od kodow",
   "register_commands": true,
+  "level_prefix": "Poziom ",
   "environment": "production"
 }
