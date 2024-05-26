@@ -45,6 +45,8 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, g.Guild)
 	log.Debug("Creating missing unconditional giveaways for guild")
 	h.GiveawayService.CreateUnconditionalGiveaway(ctx, s, g.Guild)
+	log.Debug("Creating missing conditional giveaways for guild")
+	h.GiveawayService.CreateConditionalGiveaway(ctx, s, g.Guild)
 	log.Debug("Updating all members saved roles for guild")
 	h.updateAllMembersSavedRoles(ctx, s, g.Guild.ID)
 	log.Debug("Checking helpers for guild")

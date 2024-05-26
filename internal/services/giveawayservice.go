@@ -38,15 +38,22 @@ func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo
 func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Session, guildId string) {
 	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
 	log.Debug("Finishing giveaway for guild")
-	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, guildId)
-	if err != nil {
-		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetGiveawayForGuild")
-		return
-	}
 
 	guild, err := s.Guild(guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#s.Guild")
+		return
+	}
+
+	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, guildId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Debug("Giveaway for guild does not exist, creating...")
+			h.CreateMissingGiveaways(ctx, s, guild)
+			return
+		}
+
+		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 
@@ -71,6 +78,11 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 			log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
 		}
 		log.Infof("Giveaway ended without any participants.")
+
+		// Create new giveaway
+		log.Info("Creating missing giveaways")
+		h.CreateMissingGiveaways(ctx, s, guild)
+
 		return
 	}
 
@@ -130,10 +142,10 @@ func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Sess
 		log.WithError(err).Error("FinishGiveaways#h.GiveawayRepo.GetUnfinishedGiveaways")
 		return
 	}
+
 	for _, giveaway := range giveaways {
 		h.FinishGiveaway(ctx, s, giveaway.GuildId)
 	}
-
 }
 
 func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
@@ -181,7 +193,6 @@ func (h *GiveawayService) FinishMessageGiveaways(ctx context.Context, session *d
 			continue
 		}
 		h.FinishMessageGiveaway(ctx, session, guildId)
-
 	}
 }
 
@@ -338,15 +349,20 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		return
 	}
 
-	giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayForGuild(ctx, guildId)
-	if err != nil {
-		log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.GetGiveawayForGuild")
-		return
-	}
-
 	guild, err := session.Guild(guildId)
 	if err != nil {
 		log.WithError(err).Error("FinishUnconditionalGiveaway#session.Guild")
+		return
+	}
+
+	giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayForGuild(ctx, guildId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Debug("Unconditional giveaway for guild does not exist, creating...")
+			h.CreateUnconditionalGiveaway(ctx, session, guild)
+			return
+		}
+		log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.GetGiveawayForGuild")
 		return
 	}
 
@@ -370,7 +386,7 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageEditComplex")
 		}
 
-		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w loterii.")
+		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w bezwarunkowej loterii.")
 		if err != nil {
 			log.WithError(err).Error("FinishUnconditionalGiveaway#session.ChannelMessageSend")
 		}
@@ -654,7 +670,7 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageEditComplex")
 		}
 
-		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w loterii.")
+		message, err := session.ChannelMessageSend(giveawayChannelId, "Dzisiaj nikt nie wygrywa, ponieważ nikt nie był w warunkowej loterii.")
 		if err != nil {
 			log.WithError(err).Error("FinishConditionalGiveaway#session.ChannelMessageSend")
 		}

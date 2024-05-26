@@ -452,11 +452,6 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		go h.GiveawayService.FinishConditionalGiveaway(ctx, s, guild.ID)
 	}
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
-
-	// TODO: Check if this is needed
-	log.Debug("Creating missing giveaways")
-	h.GiveawayService.CreateMissingGiveaways(ctx, s, guild)
-	h.GiveawayService.CreateUnconditionalGiveaway(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
