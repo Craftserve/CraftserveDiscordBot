@@ -219,8 +219,8 @@ func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []st
 	}
 }
 
-func ConstructConditionalGiveawayJoinEmbed(url string, level, participantsCount int) *discordgo.MessageEmbed {
-	description := fmt.Sprintf("Właśnie startuje giveaway dla osób, które posiadają poziom wyższy lub równy **%d**! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", level)
+func ConstructConditionalGiveawayJoinEmbed(url, levelRoleId string, participantsCount int) *discordgo.MessageEmbed {
+	description := fmt.Sprintf("Właśnie startuje warunkowy giveaway, do którego mogą dołączyć użytkownicy z rolą **<@&%s>** lub wyższą! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", levelRoleId)
 	if participantsCount > 0 {
 		description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
 	}
@@ -236,8 +236,8 @@ func ConstructConditionalGiveawayJoinEmbed(url string, level, participantsCount 
 	}
 }
 
-func ConstructConditionalGiveawayWinnersEmbed(url string, level int, participantsIds []string) *discordgo.MessageEmbed {
-	description := fmt.Sprintf("Oto zwycięzcy warunkowego giveawaya dla osób o poziomie wyższym lub równym **%d**! Gratulacje!", level)
+func ConstructConditionalGiveawayWinnersEmbed(url, levelRoleId string, participantsIds []string) *discordgo.MessageEmbed {
+	description := fmt.Sprintf("Oto zwycięzcy warunkowego giveawaya dla użytkowników z rolą **<@&%s>** lub wyższą! Gratulacje!", levelRoleId)
 	for _, id := range participantsIds {
 		description += "\n- <@" + id + ">"
 	}
