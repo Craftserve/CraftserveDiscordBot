@@ -99,7 +99,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment)
+	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl)
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo, conditionalGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
