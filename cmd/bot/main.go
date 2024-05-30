@@ -157,28 +157,28 @@ func main() {
 		giveawayService.FinishGiveaways(ctx, session)
 	})
 	if err != nil {
-		log.Errorf("Could not set thx giveaway cron job: %v", err)
+		log.Fatalf("Could not set thx giveaway cron job: %v", err)
 	}
 
 	err = c.AddFunc(BotConfig.MessageGiveawayCron, func() {
 		giveawayService.FinishMessageGiveaways(ctx, session)
 	})
 	if err != nil {
-		log.Errorf("Could not set message giveaway cron job: %v", err)
+		log.Fatalf("Could not set message giveaway cron job: %v", err)
 	}
 
 	err = c.AddFunc(BotConfig.UnconditionalGiveawayCron, func() {
 		giveawayService.FinishUnconditionalGiveaways(ctx, session)
 	})
 	if err != nil {
-		log.Errorf("Could not set unconditional giveaway cron job: %v", err)
+		log.Fatalf("Could not set unconditional giveaway cron job: %v", err)
 	}
 
 	err = c.AddFunc(BotConfig.ConditionalGiveawayCron, func() {
 		giveawayService.FinishConditionalGiveaways(ctx, session)
 	})
 	if err != nil {
-		log.Errorf("Could not set conditional giveaway cron job: %v", err)
+		log.Fatalf("Could not set conditional giveaway cron job: %v", err)
 	}
 	c.Start()
 
