@@ -136,7 +136,7 @@ func (repo *UnconditionalGiveawayRepo) FinishGiveaway(ctx context.Context, givea
 }
 
 func (repo *UnconditionalGiveawayRepo) HasWonGiveawayByMessageId(ctx context.Context, messageId, userId string) (bool, error) {
-	result, err := repo.mysql.WithContext(ctx).SelectInt("SELECT COUNT(*) FROM unconditional_giveaways, unconditional_giveaway_winners WHERE info_message_id = ? AND user_id = ? AND unconditional_giveaways.id = unconditional_giveaway_winners.unconditional_giveaway_id", messageId, userId)
+	result, err := repo.mysql.WithContext(ctx).SelectInt("SELECT COUNT(*) FROM unconditional_giveaways g JOIN unconditional_giveaway_winners w ON g.id = w.unconditional_giveaway_id WHERE g.info_message_id = ? AND w.user_id = ?", messageId, userId)
 	if err != nil {
 		return false, err
 	}
@@ -145,7 +145,7 @@ func (repo *UnconditionalGiveawayRepo) HasWonGiveawayByMessageId(ctx context.Con
 }
 
 func (repo *UnconditionalGiveawayRepo) GetCodeForInfoMessage(ctx context.Context, messageId, userId string) (string, error) {
-	code, err := repo.mysql.WithContext(ctx).SelectStr("SELECT code FROM unconditional_giveaways, unconditional_giveaway_winners WHERE info_message_id = ? AND user_id = ? AND unconditional_giveaways.id = unconditional_giveaway_winners.unconditional_giveaway_id", messageId, userId)
+	code, err := repo.mysql.WithContext(ctx).SelectStr("SELECT code FROM unconditional_giveaways g JOIN unconditional_giveaway_winners w ON g.id = w.unconditional_giveaway_id WHERE g.info_message_id = ? AND w.user_id = ?", messageId, userId)
 	if err != nil {
 		return "", err
 	}

@@ -107,13 +107,13 @@ func (repo *MessageGiveawayRepo) UpdateMessageGiveaway(ctx context.Context, mess
 }
 
 func (repo *MessageGiveawayRepo) UpdateUserDailyMessageCount(ctx context.Context, userId string, guildId string) error {
-	_, err := repo.mysql.WithContext(ctx).Exec("INSERT INTO daily_user_messages (user_id, day, guild_id, count) VALUES (?, date(now()), ?, 1) ON DUPLICATE KEY UPDATE count = count + 1", userId, guildId)
+	_, err := repo.mysql.WithContext(ctx).Exec("INSERT INTO daily_user_messages (user_id, day, guild_id, count) VALUES (?, DATE(now()), ?, 1) ON DUPLICATE KEY UPDATE COUNT = COUNT + 1", userId, guildId)
 	return err
 }
 
 func (repo *MessageGiveawayRepo) GetUsersWithMessagesFromLastDays(ctx context.Context, dayCount int, guildId string) ([]string, error) {
 	var users []string
-	_, err := repo.mysql.WithContext(ctx).Select(&users, "SELECT DISTINCT user_id FROM daily_user_messages WHERE guild_id = ? AND day > date_sub(now(), INTERVAL ? DAY)", guildId, dayCount)
+	_, err := repo.mysql.WithContext(ctx).Select(&users, "SELECT DISTINCT user_id FROM daily_user_messages WHERE guild_id = ? AND DAY > date_sub(now(), INTERVAL ? DAY)", guildId, dayCount)
 	return users, err
 }
 
@@ -137,17 +137,17 @@ func (repo *MessageGiveawayRepo) InsertMessageGiveawayWinner(ctx context.Context
 }
 
 func (repo *MessageGiveawayRepo) HasWonGiveawayByMessageId(ctx context.Context, infoMessageId, userId string) (bool, error) {
-	ret, err := repo.mysql.WithContext(ctx).SelectInt("SELECT count(*) from message_giveaways, message_giveaway_winners WHERE info_message_id=? AND user_id=? AND message_giveaways.id = message_giveaway_winners.message_giveaway_id;", infoMessageId, userId)
+	result, err := repo.mysql.WithContext(ctx).SelectInt("SELECT COUNT(*) FROM message_giveaways g JOIN message_giveaway_winners w ON g.id = w.message_giveaway_id WHERE g.info_message_id = ? AND w.user_id = ?", infoMessageId, userId)
 	if err != nil {
 		return false, err
 	}
 
-	return ret > 0, nil
+	return result > 0, nil
 }
 
 func (repo *MessageGiveawayRepo) GetCodesForInfoMessage(ctx context.Context, messageId, userId string) ([]string, error) {
 	var codes []string
-	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways giv, message_giveaway_winners win WHERE info_message_id=? AND giv.id = win.message_giveaway_id AND win.user_id=?;", messageId, userId)
+	_, err := repo.mysql.WithContext(ctx).Select(&codes, "SELECT code FROM message_giveaways g JOIN message_giveaway_winners w ON g.id = w.message_giveaway_id WHERE g.info_message_id = ? AND w.user_id = ?", messageId, userId)
 	return codes, err
 }
 
