@@ -127,7 +127,7 @@ func (repo *ConditionalGiveawayRepo) InsertWinner(ctx context.Context, giveawayI
 	return nil
 }
 
-func (repo *ConditionalGiveawayRepo) UpdateGiveaway(ctx context.Context, giveaway *ConditionalGiveaway, messageId string) error {
+func (repo *ConditionalGiveawayRepo) FinishGiveaway(ctx context.Context, giveaway *ConditionalGiveaway, messageId string) error {
 	now := time.Now()
 	giveaway.EndTime = &now
 	giveaway.InfoMessageId = messageId

@@ -123,7 +123,7 @@ func (repo *UnconditionalGiveawayRepo) InsertWinner(ctx context.Context, giveawa
 	return nil
 }
 
-func (repo *UnconditionalGiveawayRepo) UpdateGiveaway(ctx context.Context, giveaway *UnconditionalGiveaway, messageId string) error {
+func (repo *UnconditionalGiveawayRepo) FinishGiveaway(ctx context.Context, giveaway *UnconditionalGiveaway, messageId string) error {
 	now := time.Now()
 	giveaway.EndTime = &now
 	giveaway.InfoMessageId = messageId

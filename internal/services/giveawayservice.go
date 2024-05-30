@@ -73,9 +73,9 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		if err != nil {
 			log.WithError(err).Error("FinishGiveaway#s.ChannelMessageSend")
 		}
-		err = h.GiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID, "", "", "")
+		err = h.GiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID, "", "", "")
 		if err != nil {
-			log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
+			log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.FinishGiveaway")
 		}
 		log.Infof("Giveaway ended without any participants.")
 
@@ -125,9 +125,9 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	}
 
 	log.Debug("Updating giveaway with winner, message and code")
-	err = h.GiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID, code, winner.UserId, member.User.Username)
+	err = h.GiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID, code, winner.UserId, member.User.Username)
 	if err != nil {
-		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.UpdateGiveaway")
+		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.FinishGiveaway")
 	}
 	log.Infof("Giveaway ended with a winner: %s", member.User.Username)
 
@@ -395,9 +395,9 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		}
 
 		log.Infof("Unconditional giveaway ended without any participants.")
-		err = h.UnconditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		err = h.UnconditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 		if err != nil {
-			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.UpdateGiveaway")
+			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.FinishGiveaway")
 		}
 
 		// Create new unconditional giveaway
@@ -428,9 +428,9 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 		}
 
 		log.Infof("Unconditional giveaway ended without any winners.")
-		err = h.UnconditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		err = h.UnconditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 		if err != nil {
-			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.UpdateGiveaway")
+			log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.FinishGiveaway")
 		}
 
 		// Create new unconditional giveaway
@@ -534,9 +534,9 @@ func (h *GiveawayService) FinishUnconditionalGiveaway(ctx context.Context, sessi
 	}
 
 	log.Debug("Updating unconditional giveaway in database with winners")
-	err = h.UnconditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+	err = h.UnconditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 	if err != nil {
-		log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.UpdateGiveaway")
+		log.WithError(err).Error("FinishUnconditionalGiveaway#h.UnconditionalGiveawayRepo.FinishGiveaway")
 	}
 
 	log.Infof("Unconditional giveaway ended with winners: %s", strings.Join(winnerNames, ", "))
@@ -679,9 +679,9 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 		}
 
 		log.Infof("Conditional giveaway ended without any participants.")
-		err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		err = h.ConditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 		if err != nil {
-			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.FinishGiveaway")
 		}
 
 		// Create new conditional giveaway
@@ -712,9 +712,9 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 		}
 
 		log.Infof("Conditional giveaway ended without any winners.")
-		err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+		err = h.ConditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 		if err != nil {
-			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+			log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.FinishGiveaway")
 		}
 
 		// Create new conditional giveaway
@@ -816,9 +816,9 @@ func (h *GiveawayService) FinishConditionalGiveaway(ctx context.Context, session
 	}
 
 	log.Debug("Updating conditional giveaway in database with winners")
-	err = h.ConditionalGiveawayRepo.UpdateGiveaway(ctx, &giveaway, message.ID)
+	err = h.ConditionalGiveawayRepo.FinishGiveaway(ctx, &giveaway, message.ID)
 	if err != nil {
-		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.UpdateGiveaway")
+		log.WithError(err).Error("FinishConditionalGiveaway#h.ConditionalGiveawayRepo.FinishGiveaway")
 	}
 
 	log.Infof("Conditional giveaway ended with winners: %s", strings.Join(winnerIds, ", "))
