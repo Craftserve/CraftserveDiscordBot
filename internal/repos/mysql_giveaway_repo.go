@@ -300,6 +300,16 @@ func (repo *GiveawayRepo) IsGiveawayEnded(ctx context.Context, giveawayId int) (
 	return ret > 0, nil
 }
 
+func (repo *GiveawayRepo) GetGiveawayById(ctx context.Context, giveawayId int) (*Giveaway, error) {
+	var giveaway Giveaway
+	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, start_time, end_time, guild_id, guild_name, winner_id, winner_name, info_message_id, code FROM giveaways WHERE id = ?", giveawayId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &giveaway, nil
+}
+
 func (repo *GiveawayRepo) GetCodeForInfoMessage(ctx context.Context, infoMessageId string) (string, error) {
 	var code string
 	err := repo.mysql.WithContext(ctx).SelectOne(&code, "SELECT code FROM giveaways WHERE info_message_id = ?", infoMessageId)

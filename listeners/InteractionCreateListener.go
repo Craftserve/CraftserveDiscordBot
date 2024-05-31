@@ -169,19 +169,13 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 	case "unconditionalgiveawayjoin":
 		log.Debug("User clicked unconditionalgiveawayjoin button")
 
-		giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+		giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetGiveawayForGuild: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetGiveawayByMessageId: %v", err)
 			return
 		}
 
-		isFinished, err := h.UnconditionalGiveawayRepo.IsGiveawayFinishedByMessageId(ctx, i.Message.ID)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.IsGiveawayFinishedByMessageId: %v", err)
-			return
-		}
-
-		if isFinished {
+		if giveaway.EndTime != nil {
 			log.Debug("Giveaway has ended")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
 			return
@@ -261,19 +255,13 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 	case "conditionalgiveawayjoin":
 		log.Debug("User clicked conditionalgiveawayjoin button")
 
-		giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+		giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.GetGiveawayForGuild: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.GetGiveawayByMessageId: %v", err)
 			return
 		}
 
-		isFinished, err := h.ConditionalGiveawayRepo.IsGiveawayFinishedByMessageId(ctx, i.Message.ID)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.IsGiveawayFinishedByMessageId: %v", err)
-			return
-		}
-
-		if isFinished {
+		if giveaway.EndTime != nil {
 			log.Debug("Giveaway has ended")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
 			return
@@ -419,12 +407,13 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			return
 		}
 
-		giveawayEnded, err := h.GiveawayRepo.IsGiveawayEnded(ctx, participant.GiveawayId)
+		giveaway, err := h.GiveawayRepo.GetGiveawayById(ctx, participant.GiveawayId)
 		if err != nil {
-			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.IsGiveawayEnded: %v", err)
+			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetGiveawayById: %v", err)
 			return
 		}
-		if giveawayEnded {
+
+		if giveaway.EndTime != nil {
 			log.Debug("Giveaway has ended")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Giveaway już się zakończył!")
 			return

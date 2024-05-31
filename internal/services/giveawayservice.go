@@ -322,9 +322,9 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 	}
 
 	log.Debug("Updating message giveaway in database with message id")
-	err = h.MessageGiveawayRepo.UpdateMessageGiveaway(ctx, &giveaway, message.ID)
+	err = h.MessageGiveawayRepo.FinishMessageGiveaway(ctx, &giveaway, message.ID)
 	if err != nil {
-		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.UpdateMessageGiveaway")
+		log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.FinishMessageGiveaway")
 	}
 	log.Infof("Message giveaway ended with a winners: %s", strings.Join(winnerNames, ", "))
 

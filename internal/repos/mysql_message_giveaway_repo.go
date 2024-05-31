@@ -95,7 +95,7 @@ func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId
 	return giveaway, nil
 }
 
-func (repo *MessageGiveawayRepo) UpdateMessageGiveaway(ctx context.Context, messageGiveaway *MessageGiveaway, messageId string) error {
+func (repo *MessageGiveawayRepo) FinishMessageGiveaway(ctx context.Context, messageGiveaway *MessageGiveaway, messageId string) error {
 	now := time.Now()
 	messageGiveaway.EndTime = &now
 	messageGiveaway.InfoMessageId = sql.NullString{String: messageId, Valid: true}

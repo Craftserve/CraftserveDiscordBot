@@ -157,11 +157,12 @@ func (repo *ConditionalGiveawayRepo) GetCodeForInfoMessage(ctx context.Context, 
 	return code, nil
 }
 
-func (repo *ConditionalGiveawayRepo) IsGiveawayFinishedByMessageId(ctx context.Context, messageId string) (bool, error) {
-	result, err := repo.mysql.WithContext(ctx).SelectInt("SELECT COUNT(*) FROM conditional_giveaways WHERE info_message_id = ? AND end_time IS NOT NULL", messageId)
+func (repo *ConditionalGiveawayRepo) GetGiveawayByMessageId(ctx context.Context, messageId string) (*ConditionalGiveaway, error) {
+	var giveaway ConditionalGiveaway
+	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, start_time, end_time, guild_id, info_message_id, level FROM conditional_giveaways WHERE info_message_id = ?", messageId)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return result > 0, nil
+	return &giveaway, nil
 }
