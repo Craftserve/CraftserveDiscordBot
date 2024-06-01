@@ -645,7 +645,7 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		return
 	}
 	if serverConfig.MainChannel == channelId {
-		log.Debug("Giveaway channel is the same as current")
+		log.Debug("SqlGiveaway channel is the same as current")
 		discord.RespondWithMessage(ctx, s, i, "Kanał do ogłoszeń giveawaya jest już ustawiony na "+channel.Mention())
 		return
 	}

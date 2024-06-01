@@ -47,7 +47,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, guildId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Debug("Giveaway for guild does not exist, creating...")
+			log.Debug("SqlGiveaway for guild does not exist, creating...")
 			h.CreateMissingGiveaways(ctx, s, guild)
 			return
 		}
@@ -76,7 +76,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 		if err != nil {
 			log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.FinishGiveaway")
 		}
-		log.Infof("Giveaway ended without any participants.")
+		log.Infof("SqlGiveaway ended without any participants.")
 
 		// Create new giveaway
 		log.Info("Creating missing giveaways")
@@ -128,7 +128,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	if err != nil {
 		log.WithError(err).Error("FinishGiveaway#h.GiveawayRepo.FinishGiveaway")
 	}
-	log.Infof("Giveaway ended with a winner: %s", member.User.Username)
+	log.Infof("SqlGiveaway ended with a winner: %s", member.User.Username)
 
 	log.Info("Creating missing giveaways")
 	h.CreateMissingGiveaways(ctx, s, guild)
@@ -170,7 +170,7 @@ func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discord
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
-		log.Debug("Giveaway for guild does not exist, creating...")
+		log.Debug("SqlGiveaway for guild does not exist, creating...")
 		err = h.GiveawayRepo.InsertGiveaway(ctx, guild.ID, guild.Name)
 		if err != nil {
 			log.WithError(err).Error("CreateMissingGiveaways#h.GiveawayRepo.InsertGiveaway")
