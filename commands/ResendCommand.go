@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
@@ -13,18 +13,18 @@ type ResendCommand struct {
 	Description         string
 	DMPermission        bool
 	CraftserveUrl       string
-	GiveawayRepo        repos.GiveawayRepo
-	MessageGiveawayRepo repos.MessageGiveawayRepo
+	GiveawayRepo        entities.GiveawayRepo
+	MessageGiveawayRepo entities.MessageGiveawayRepo
 }
 
-func NewResendCommand(giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, craftserveUrl string) ResendCommand {
+func NewResendCommand(giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, craftserveUrl string) ResendCommand {
 	return ResendCommand{
 		Name:                "resend",
 		Description:         "Wysyła na PW ostatnie 10 wygranych kodów z giveawayi",
 		DMPermission:        false,
 		CraftserveUrl:       craftserveUrl,
-		GiveawayRepo:        *giveawayRepo,
-		MessageGiveawayRepo: *messageGiveawayRepo,
+		GiveawayRepo:        giveawayRepo,
+		MessageGiveawayRepo: messageGiveawayRepo,
 	}
 }
 

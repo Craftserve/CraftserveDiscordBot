@@ -1,19 +1,19 @@
 package listeners
 
 import (
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
 )
 
 type MessageCreateListener struct {
-	MessageGiveawayRepo repos.MessageGiveawayRepo
+	MessageGiveawayRepo entities.MessageGiveawayRepo
 }
 
-func NewMessageCreateListener(messageGiveawayRepo *repos.MessageGiveawayRepo) MessageCreateListener {
+func NewMessageCreateListener(messageGiveawayRepo entities.MessageGiveawayRepo) MessageCreateListener {
 	return MessageCreateListener{
-		MessageGiveawayRepo: *messageGiveawayRepo,
+		MessageGiveawayRepo: messageGiveawayRepo,
 	}
 }
 

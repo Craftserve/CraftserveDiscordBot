@@ -4,7 +4,6 @@ import (
 	"context"
 	"csrvbot/commands"
 	"csrvbot/domain/entities"
-	"csrvbot/internal/repos"
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
@@ -24,14 +23,14 @@ type InteractionCreateListener struct {
 	ResendCommand        commands.ResendCommand
 	GiveawayHours        string
 	CraftserveUrl        string
-	GiveawayRepo         repos.GiveawayRepo
-	MessageGiveawayRepo  repos.MessageGiveawayRepo
-	ServerRepo           repos.ServerRepo
+	GiveawayRepo         entities.GiveawayRepo
+	MessageGiveawayRepo  entities.MessageGiveawayRepo
+	ServerRepo           entities.ServerRepo
 	HelperService        services.HelperService
 	JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, joinableGiveawayRepo entities.JoinableGiveawayRepo) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, joinableGiveawayRepo entities.JoinableGiveawayRepo) InteractionCreateListener {
 	return InteractionCreateListener{
 		GiveawayCommand:      giveawayCommand,
 		ThxCommand:           thxCommand,
@@ -41,9 +40,9 @@ func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxC
 		ResendCommand:        resendCommand,
 		GiveawayHours:        giveawayHours,
 		CraftserveUrl:        craftserveUrl,
-		GiveawayRepo:         *giveawayRepo,
-		MessageGiveawayRepo:  *messageGiveawayRepo,
-		ServerRepo:           *serverRepo,
+		GiveawayRepo:         giveawayRepo,
+		MessageGiveawayRepo:  messageGiveawayRepo,
+		ServerRepo:           serverRepo,
 		HelperService:        *helperService,
 		JoinableGiveawayRepo: joinableGiveawayRepo,
 	}

@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/internal/services"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
@@ -21,9 +21,9 @@ type CsrvbotCommand struct {
 	Zero                     float64
 	GiveawayHours            string
 	CraftserveUrl            string
-	ServerRepo               repos.ServerRepo
-	GiveawayRepo             repos.GiveawayRepo
-	UserRepo                 repos.UserRepo
+	ServerRepo               entities.ServerRepo
+	GiveawayRepo             entities.GiveawayRepo
+	UserRepo                 entities.UserRepo
 	CsrvClient               services.CsrvClient
 	GiveawayService          services.GiveawayService
 	HelperService            services.HelperService
@@ -53,7 +53,7 @@ const (
 	ConditionalGiveawayLevelsSubcommand    = "conditionalgiveawaylevels"
 )
 
-func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
+func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo entities.ServerRepo, giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
 		Name:                     "csrvbot",
 		Description:              "Komendy konfiguracyjne i administracyjne",
@@ -62,9 +62,9 @@ func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo *repos.Se
 		Zero:                     0.0,
 		GiveawayHours:            giveawayHours,
 		CraftserveUrl:            craftserveUrl,
-		ServerRepo:               *serverRepo,
-		GiveawayRepo:             *giveawayRepo,
-		UserRepo:                 *userRepo,
+		ServerRepo:               serverRepo,
+		GiveawayRepo:             giveawayRepo,
+		UserRepo:                 userRepo,
 		CsrvClient:               *csrvClient,
 		GiveawayService:          *giveawayService,
 		HelperService:            *helperService,

@@ -2,7 +2,7 @@ package listeners
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
@@ -14,17 +14,17 @@ import (
 )
 
 type GuildCreateListener struct {
-	GiveawayRepo     repos.GiveawayRepo
-	ServerRepo       repos.ServerRepo
+	GiveawayRepo     entities.GiveawayRepo
+	ServerRepo       entities.ServerRepo
 	GiveawayService  services.GiveawayService
 	HelperService    services.HelperService
 	SavedRoleService services.SavedroleService
 }
 
-func NewGuildCreateListener(giveawayRepo *repos.GiveawayRepo, serverRepo *repos.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
+func NewGuildCreateListener(giveawayRepo entities.GiveawayRepo, serverRepo entities.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
 	return GuildCreateListener{
-		GiveawayRepo:     *giveawayRepo,
-		ServerRepo:       *serverRepo,
+		GiveawayRepo:     giveawayRepo,
+		ServerRepo:       serverRepo,
 		GiveawayService:  *giveawayService,
 		HelperService:    *helperService,
 		SavedRoleService: *savedRoleService,

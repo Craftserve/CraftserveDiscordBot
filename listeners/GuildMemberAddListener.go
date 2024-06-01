@@ -2,19 +2,19 @@ package listeners
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
 )
 
 type GuildMemberAddListener struct {
-	UserRepo repos.UserRepo
+	UserRepo entities.UserRepo
 }
 
-func NewGuildMemberAddListener(userRepo *repos.UserRepo) GuildMemberAddListener {
+func NewGuildMemberAddListener(userRepo entities.UserRepo) GuildMemberAddListener {
 	return GuildMemberAddListener{
-		UserRepo: *userRepo,
+		UserRepo: userRepo,
 	}
 }
 

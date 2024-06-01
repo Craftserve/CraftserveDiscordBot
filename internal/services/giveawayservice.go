@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"csrvbot/domain/entities"
-	"csrvbot/internal/repos"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"database/sql"
@@ -17,19 +16,19 @@ import (
 type GiveawayService struct {
 	CsrvClient           CsrvClient
 	CraftserveUrl        string
-	ServerRepo           repos.ServerRepo
-	GiveawayRepo         repos.GiveawayRepo
-	MessageGiveawayRepo  repos.MessageGiveawayRepo
+	ServerRepo           entities.ServerRepo
+	GiveawayRepo         entities.GiveawayRepo
+	MessageGiveawayRepo  entities.MessageGiveawayRepo
 	JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, joinableGiveawayRepo entities.JoinableGiveawayRepo) *GiveawayService {
+func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo entities.ServerRepo, giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, joinableGiveawayRepo entities.JoinableGiveawayRepo) *GiveawayService {
 	return &GiveawayService{
 		CsrvClient:           *csrvClient,
 		CraftserveUrl:        craftserveUrl,
-		ServerRepo:           *serverRepo,
-		GiveawayRepo:         *giveawayRepo,
-		MessageGiveawayRepo:  *messageGiveawayRepo,
+		ServerRepo:           serverRepo,
+		GiveawayRepo:         giveawayRepo,
+		MessageGiveawayRepo:  messageGiveawayRepo,
 		JoinableGiveawayRepo: joinableGiveawayRepo,
 	}
 }

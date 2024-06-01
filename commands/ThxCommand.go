@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"database/sql"
@@ -16,19 +16,19 @@ type ThxCommand struct {
 	DMPermission  bool
 	GiveawayHours string
 	CraftserveUrl string
-	GiveawayRepo  repos.GiveawayRepo
-	UserRepo      repos.UserRepo
-	ServerRepo    repos.ServerRepo
+	GiveawayRepo  entities.GiveawayRepo
+	UserRepo      entities.UserRepo
+	ServerRepo    entities.ServerRepo
 }
 
-func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, serverRepo *repos.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
+func NewThxCommand(giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
 	return ThxCommand{
 		Name:          "thx",
 		Description:   "Podziękowanie innemu użytkownikowi",
 		DMPermission:  false,
-		GiveawayRepo:  *giveawayRepo,
-		UserRepo:      *userRepo,
-		ServerRepo:    *serverRepo,
+		GiveawayRepo:  giveawayRepo,
+		UserRepo:      userRepo,
+		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
 		CraftserveUrl: craftserveUrl,
 	}

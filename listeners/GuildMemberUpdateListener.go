@@ -1,7 +1,7 @@
 package listeners
 
 import (
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/logger"
@@ -9,13 +9,13 @@ import (
 )
 
 type GuildMemberUpdateListener struct {
-	UserRepo         repos.UserRepo
+	UserRepo         entities.UserRepo
 	SavedRoleService services.SavedroleService
 }
 
-func NewGuildMemberUpdateListener(userRepo *repos.UserRepo, savedRoleService *services.SavedroleService) GuildMemberUpdateListener {
+func NewGuildMemberUpdateListener(userRepo entities.UserRepo, savedRoleService *services.SavedroleService) GuildMemberUpdateListener {
 	return GuildMemberUpdateListener{
-		UserRepo:         *userRepo,
+		UserRepo:         userRepo,
 		SavedRoleService: *savedRoleService,
 	}
 }
