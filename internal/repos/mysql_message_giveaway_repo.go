@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+	"csrvbot/domain/entities"
 	"database/sql"
 	"github.com/go-gorp/gorp"
 	"time"
@@ -13,14 +14,14 @@ type MessageGiveawayRepo struct {
 }
 
 func NewMessageGiveawayRepo(mysql *gorp.DbMap) *MessageGiveawayRepo {
-	mysql.AddTableWithName(MessageGiveaway{}, "message_giveaways").SetKeys(true, "id")
-	mysql.AddTableWithName(MessageGiveawayWinner{}, "message_giveaway_winners").SetKeys(true, "id")
-	mysql.AddTableWithName(DailyUserMessages{}, "daily_user_messages").SetKeys(true, "id").SetUniqueTogether("day", "user_id", "guild_id")
+	mysql.AddTableWithName(SqlMessageGiveaway{}, "message_giveaways").SetKeys(true, "id")
+	mysql.AddTableWithName(SqlMessageGiveawayWinner{}, "message_giveaway_winners").SetKeys(true, "id")
+	mysql.AddTableWithName(SqlDailyUserMessages{}, "daily_user_messages").SetKeys(true, "id").SetUniqueTogether("day", "user_id", "guild_id")
 
 	return &MessageGiveawayRepo{mysql: mysql}
 }
 
-type MessageGiveaway struct {
+type SqlMessageGiveaway struct {
 	Id            int            `db:"id, primarykey, autoincrement"`
 	StartTime     time.Time      `db:"start_time"`
 	EndTime       *time.Time     `db:"end_time"`
@@ -28,14 +29,14 @@ type MessageGiveaway struct {
 	InfoMessageId sql.NullString `db:"info_message_id,size:255"`
 }
 
-type MessageGiveawayWinner struct {
+type SqlMessageGiveawayWinner struct {
 	Id                int    `db:"id, primarykey, autoincrement"`
 	MessageGiveawayId int    `db:"message_giveaway_id"`
 	UserId            string `db:"user_id,size:255"`
 	Code              string `db:"code,size:255"`
 }
 
-type DailyUserMessages struct {
+type SqlDailyUserMessages struct {
 	Id      int    `db:"id, primarykey, autoincrement"`
 	UserId  string `db:"user_id,size:255"`
 	Day     string `db:"day"` // fixme should be date
@@ -43,7 +44,65 @@ type DailyUserMessages struct {
 	Count   int    `db:"count"`
 }
 
-func (repo *MessageGiveawayRepo) WithTx(ctx context.Context, tx *gorp.Transaction) (*MessageGiveawayRepo, *gorp.Transaction, error) {
+func FromSqlMessageGiveaway(giveaway *SqlMessageGiveaway) *entities.MessageGiveaway {
+	return &entities.MessageGiveaway{
+		Id:            giveaway.Id,
+		StartTime:     giveaway.StartTime,
+		EndTime:       giveaway.EndTime,
+		GuildId:       giveaway.GuildId,
+		InfoMessageId: giveaway.InfoMessageId,
+	}
+}
+
+func ToSqlMessageGiveaway(giveaway *entities.MessageGiveaway) *SqlMessageGiveaway {
+	return &SqlMessageGiveaway{
+		Id:            giveaway.Id,
+		StartTime:     giveaway.StartTime,
+		EndTime:       giveaway.EndTime,
+		GuildId:       giveaway.GuildId,
+		InfoMessageId: giveaway.InfoMessageId,
+	}
+}
+
+func FromSqlMessageGiveawayWinner(winner *SqlMessageGiveawayWinner) *entities.MessageGiveawayWinner {
+	return &entities.MessageGiveawayWinner{
+		Id:                winner.Id,
+		MessageGiveawayId: winner.MessageGiveawayId,
+		UserId:            winner.UserId,
+		Code:              winner.Code,
+	}
+}
+
+func ToSqlMessageGiveawayWinner(winner *entities.MessageGiveawayWinner) *SqlMessageGiveawayWinner {
+	return &SqlMessageGiveawayWinner{
+		Id:                winner.Id,
+		MessageGiveawayId: winner.MessageGiveawayId,
+		UserId:            winner.UserId,
+		Code:              winner.Code,
+	}
+}
+
+func FromSqlDailyUserMessages(dailyUserMessages *SqlDailyUserMessages) *entities.DailyUserMessages {
+	return &entities.DailyUserMessages{
+		Id:      dailyUserMessages.Id,
+		UserId:  dailyUserMessages.UserId,
+		Day:     dailyUserMessages.Day,
+		GuildId: dailyUserMessages.GuildId,
+		Count:   dailyUserMessages.Count,
+	}
+}
+
+func ToSqlDailyUserMessages(dailyUserMessages *entities.DailyUserMessages) *SqlDailyUserMessages {
+	return &SqlDailyUserMessages{
+		Id:      dailyUserMessages.Id,
+		UserId:  dailyUserMessages.UserId,
+		Day:     dailyUserMessages.Day,
+		GuildId: dailyUserMessages.GuildId,
+		Count:   dailyUserMessages.Count,
+	}
+}
+
+func (repo *MessageGiveawayRepo) WithTx(ctx context.Context, tx *gorp.Transaction) (entities.MessageGiveawayRepo, *gorp.Transaction, error) {
 	if tx == nil {
 		var err error
 		tx, err = repo.mysql.Begin()
@@ -61,7 +120,7 @@ func (repo *MessageGiveawayRepo) WithTx(ctx context.Context, tx *gorp.Transactio
 }
 
 func (repo *MessageGiveawayRepo) InsertMessageGiveaway(ctx context.Context, guildId string) error {
-	giveaway := &MessageGiveaway{
+	giveaway := &SqlMessageGiveaway{
 		StartTime: time.Now(),
 		GuildId:   guildId,
 	}
@@ -78,8 +137,8 @@ func (repo *MessageGiveawayRepo) InsertMessageGiveaway(ctx context.Context, guil
 	return nil
 }
 
-func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId string) (MessageGiveaway, error) {
-	var giveaway MessageGiveaway
+func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId string) (entities.MessageGiveaway, error) {
+	var giveaway SqlMessageGiveaway
 	sqlExecutor := repo.mysql.WithContext(ctx)
 
 	query := "SELECT id, start_time, guild_id, info_message_id FROM message_giveaways WHERE guild_id = ? AND info_message_id IS NULL"
@@ -90,16 +149,16 @@ func (repo *MessageGiveawayRepo) GetMessageGiveaway(ctx context.Context, guildId
 
 	err := sqlExecutor.SelectOne(&giveaway, query, guildId)
 	if err != nil {
-		return MessageGiveaway{}, err
+		return entities.MessageGiveaway{}, err
 	}
-	return giveaway, nil
+	return *FromSqlMessageGiveaway(&giveaway), nil
 }
 
-func (repo *MessageGiveawayRepo) FinishMessageGiveaway(ctx context.Context, messageGiveaway *MessageGiveaway, messageId string) error {
+func (repo *MessageGiveawayRepo) FinishMessageGiveaway(ctx context.Context, messageGiveaway *entities.MessageGiveaway, messageId string) error {
 	now := time.Now()
 	messageGiveaway.EndTime = &now
 	messageGiveaway.InfoMessageId = sql.NullString{String: messageId, Valid: true}
-	_, err := repo.mysql.WithContext(ctx).Update(messageGiveaway)
+	_, err := repo.mysql.WithContext(ctx).Update(ToSqlMessageGiveaway(messageGiveaway))
 	if err != nil {
 		return err
 	}
@@ -118,7 +177,7 @@ func (repo *MessageGiveawayRepo) GetUsersWithMessagesFromLastDays(ctx context.Co
 }
 
 func (repo *MessageGiveawayRepo) InsertMessageGiveawayWinner(ctx context.Context, giveawayId int, userId, code string) error {
-	winner := &MessageGiveawayWinner{
+	winner := &SqlMessageGiveawayWinner{
 		MessageGiveawayId: giveawayId,
 		UserId:            userId,
 		Code:              code,
