@@ -38,24 +38,6 @@ func ConstructMessageWinnerComponents(disabled bool) []discordgo.MessageComponen
 	}
 }
 
-func ConstructUnconditionalWinnerComponents(disabled bool) []discordgo.MessageComponent {
-	return []discordgo.MessageComponent{
-		&discordgo.ActionsRow{
-			Components: []discordgo.MessageComponent{
-				&discordgo.Button{
-					Label:    "Kliknij tutaj, aby wyświetlić kod",
-					Style:    discordgo.SuccessButton,
-					CustomID: "unconditionalwinnercode",
-					Emoji: &discordgo.ComponentEmoji{
-						Name: "🎉",
-					},
-					Disabled: disabled,
-				},
-			},
-		},
-	}
-}
-
 func ConstructAcceptRejectComponents(disabled bool) []discordgo.MessageComponent {
 	return []discordgo.MessageComponent{
 		&discordgo.ActionsRow{
@@ -83,14 +65,14 @@ func ConstructAcceptRejectComponents(disabled bool) []discordgo.MessageComponent
 	}
 }
 
-func ConstructUnconditionalJoinComponents(disabled bool) []discordgo.MessageComponent {
+func ConstructJoinComponents(disabled bool) []discordgo.MessageComponent {
 	return []discordgo.MessageComponent{
 		&discordgo.ActionsRow{
 			Components: []discordgo.MessageComponent{
 				&discordgo.Button{
 					Label:    "Weź udział",
 					Style:    discordgo.SuccessButton,
-					CustomID: "unconditionalgiveawayjoin",
+					CustomID: "giveawayjoin",
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "🙋",
 					},
@@ -101,32 +83,14 @@ func ConstructUnconditionalJoinComponents(disabled bool) []discordgo.MessageComp
 	}
 }
 
-func ConstructConditionalJoinComponents(disabled bool) []discordgo.MessageComponent {
-	return []discordgo.MessageComponent{
-		&discordgo.ActionsRow{
-			Components: []discordgo.MessageComponent{
-				&discordgo.Button{
-					Label:    "Weź udział",
-					Style:    discordgo.SuccessButton,
-					CustomID: "conditionalgiveawayjoin",
-					Emoji: &discordgo.ComponentEmoji{
-						Name: "🙋",
-					},
-					Disabled: disabled,
-				},
-			},
-		},
-	}
-}
-
-func ConstructConditionalWinnerComponents(disabled bool) []discordgo.MessageComponent {
+func ConstructJoinableGiveawayWinnerComponents(disabled bool) []discordgo.MessageComponent {
 	return []discordgo.MessageComponent{
 		&discordgo.ActionsRow{
 			Components: []discordgo.MessageComponent{
 				&discordgo.Button{
 					Label:    "Kliknij tutaj, aby wyświetlić kod",
 					Style:    discordgo.SuccessButton,
-					CustomID: "conditionalwinnercode",
+					CustomID: "joinablewinnercode",
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "🎉",
 					},

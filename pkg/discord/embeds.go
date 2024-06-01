@@ -186,15 +186,26 @@ func ConstructResendEmbed(url string, codes []string) *discordgo.MessageEmbed {
 	return embed
 }
 
-func ConstructUnconditionalGiveawayJoinEmbed(url string, participantsCount int) *discordgo.MessageEmbed {
-	description := "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!"
-	if participantsCount > 0 {
-		description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
+func ConstructJoinableGiveawayEmbed(url string, participantsCount int, levelRoleId *string) *discordgo.MessageEmbed {
+	var title, description string
+	if levelRoleId != nil {
+		title = "Dołącz do poziomowego giveaway już teraz!"
+		description = fmt.Sprintf("Właśnie startuje poziomowy giveaway, do którego mogą dołączyć użytkownicy z rolą **<@&%s>** lub wyższą! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", *levelRoleId)
+		if participantsCount > 0 {
+			description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
+		}
+	} else {
+		title = "Dołącz do giveaway już teraz!"
+		description = "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!"
+		if participantsCount > 0 {
+			description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
+		}
 	}
+
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
-			Name:    "Dołącz do giveaway już teraz!",
+			Name:    title,
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
 		Color:       0x234d20,
@@ -202,8 +213,16 @@ func ConstructUnconditionalGiveawayJoinEmbed(url string, participantsCount int) 
 	}
 }
 
-func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []string) *discordgo.MessageEmbed {
-	description := "Oto zwycięzcy bezwarunkowego giveawaya! Gratulacje!"
+func ConstructJoinableWinnersEmbed(url string, participantsIds []string, levelRoleId *string) *discordgo.MessageEmbed {
+	var title, description string
+	if levelRoleId != nil {
+		title = "Zakończono poziomowy giveaway!"
+		description = fmt.Sprintf("Oto zwycięzcy warunkowego giveawaya dla użytkowników z rolą **<@&%s>** lub wyższą! Gratulacje!", *levelRoleId)
+	} else {
+		title = "Zakończono bezwarunkowy giveaway!"
+		description = "Oto zwycięzcy bezwarunkowego giveawaya! Gratulacje!"
+	}
+
 	for _, id := range participantsIds {
 		description += "\n- <@" + id + ">"
 	}
@@ -211,41 +230,7 @@ func ConstructUnconditionalGiveawayWinnersEmbed(url string, participantsIds []st
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
-			Name:    "Zakończono bezwarunkowy giveaway!",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
-		},
-		Color:       0x234d20,
-		Description: description,
-	}
-}
-
-func ConstructConditionalGiveawayJoinEmbed(url, levelRoleId string, participantsCount int) *discordgo.MessageEmbed {
-	description := fmt.Sprintf("Właśnie startuje warunkowy giveaway, do którego mogą dołączyć użytkownicy z rolą **<@&%s>** lub wyższą! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", levelRoleId)
-	if participantsCount > 0 {
-		description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
-	}
-
-	return &discordgo.MessageEmbed{
-		Author: &discordgo.MessageEmbedAuthor{
-			URL:     url,
-			Name:    "Dołącz do warunkowego giveaway już teraz!",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
-		},
-		Color:       0x234d20,
-		Description: description,
-	}
-}
-
-func ConstructConditionalGiveawayWinnersEmbed(url, levelRoleId string, participantsIds []string) *discordgo.MessageEmbed {
-	description := fmt.Sprintf("Oto zwycięzcy warunkowego giveawaya dla użytkowników z rolą **<@&%s>** lub wyższą! Gratulacje!", levelRoleId)
-	for _, id := range participantsIds {
-		description += "\n- <@" + id + ">"
-	}
-
-	return &discordgo.MessageEmbed{
-		Author: &discordgo.MessageEmbedAuthor{
-			URL:     url,
-			Name:    "Zakończono warunkowy giveaway!",
+			Name:    title,
 			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
 		},
 		Color:       0x234d20,

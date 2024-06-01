@@ -41,14 +41,23 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 
 	log.Debug("Creating configuration if not exists")
 	h.createConfigurationIfNotExists(ctx, s, g.Guild.ID)
+
 	log.Debug("Creating missing giveaways for guild")
 	h.GiveawayService.CreateMissingGiveaways(ctx, s, g.Guild)
+
 	log.Debug("Creating missing unconditional giveaways for guild")
-	h.GiveawayService.CreateUnconditionalGiveaway(ctx, s, g.Guild)
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, nil)
+
 	log.Debug("Creating missing conditional giveaways for guild")
-	h.GiveawayService.CreateConditionalGiveaway(ctx, s, g.Guild)
+	level, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, g.Guild.ID)
+	if err != nil {
+		log.WithError(err).Error("Could not pick level for giveaway")
+	}
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, level)
+
 	log.Debug("Updating all members saved roles for guild")
 	h.updateAllMembersSavedRoles(ctx, s, g.Guild.ID)
+
 	log.Debug("Checking helpers for guild")
 	h.HelperService.CheckHelpers(ctx, s, g.Guild.ID)
 }

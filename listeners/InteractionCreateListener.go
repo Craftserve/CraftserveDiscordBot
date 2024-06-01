@@ -3,6 +3,7 @@ package listeners
 import (
 	"context"
 	"csrvbot/commands"
+	"csrvbot/domain/entities"
 	"csrvbot/internal/repos"
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
@@ -15,38 +16,36 @@ import (
 )
 
 type InteractionCreateListener struct {
-	GiveawayCommand           commands.GiveawayCommand
-	ThxCommand                commands.ThxCommand
-	ThxmeCommand              commands.ThxmeCommand
-	CsrvbotCommand            commands.CsrvbotCommand
-	DocCommand                commands.DocCommand
-	ResendCommand             commands.ResendCommand
-	GiveawayHours             string
-	CraftserveUrl             string
-	GiveawayRepo              repos.GiveawayRepo
-	MessageGiveawayRepo       repos.MessageGiveawayRepo
-	ServerRepo                repos.ServerRepo
-	HelperService             services.HelperService
-	UnconditionalGiveawayRepo repos.UnconditionalGiveawayRepo
-	ConditionalGiveawayRepo   repos.ConditionalGiveawayRepo
+	GiveawayCommand      commands.GiveawayCommand
+	ThxCommand           commands.ThxCommand
+	ThxmeCommand         commands.ThxmeCommand
+	CsrvbotCommand       commands.CsrvbotCommand
+	DocCommand           commands.DocCommand
+	ResendCommand        commands.ResendCommand
+	GiveawayHours        string
+	CraftserveUrl        string
+	GiveawayRepo         repos.GiveawayRepo
+	MessageGiveawayRepo  repos.MessageGiveawayRepo
+	ServerRepo           repos.ServerRepo
+	HelperService        services.HelperService
+	JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, unconditionalGiveawayRepo *repos.UnconditionalGiveawayRepo, conditionalGiveawayRepo *repos.ConditionalGiveawayRepo) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService, joinableGiveawayRepo entities.JoinableGiveawayRepo) InteractionCreateListener {
 	return InteractionCreateListener{
-		GiveawayCommand:           giveawayCommand,
-		ThxCommand:                thxCommand,
-		ThxmeCommand:              thxmeCommand,
-		CsrvbotCommand:            csrvbotCommand,
-		DocCommand:                docCommand,
-		ResendCommand:             resendCommand,
-		GiveawayHours:             giveawayHours,
-		CraftserveUrl:             craftserveUrl,
-		GiveawayRepo:              *giveawayRepo,
-		MessageGiveawayRepo:       *messageGiveawayRepo,
-		ServerRepo:                *serverRepo,
-		HelperService:             *helperService,
-		UnconditionalGiveawayRepo: *unconditionalGiveawayRepo,
-		ConditionalGiveawayRepo:   *conditionalGiveawayRepo,
+		GiveawayCommand:      giveawayCommand,
+		ThxCommand:           thxCommand,
+		ThxmeCommand:         thxmeCommand,
+		CsrvbotCommand:       csrvbotCommand,
+		DocCommand:           docCommand,
+		ResendCommand:        resendCommand,
+		GiveawayHours:        giveawayHours,
+		CraftserveUrl:        craftserveUrl,
+		GiveawayRepo:         *giveawayRepo,
+		MessageGiveawayRepo:  *messageGiveawayRepo,
+		ServerRepo:           *serverRepo,
+		HelperService:        *helperService,
+		JoinableGiveawayRepo: joinableGiveawayRepo,
 	}
 }
 
@@ -166,12 +165,12 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 	case "accept", "reject":
 		h.handleAcceptDeclineButtons(ctx, s, i)
-	case "unconditionalgiveawayjoin":
-		log.Debug("User clicked unconditionalgiveawayjoin button")
+	case "giveawayjoin":
+		log.Debug("User clicked giveawayjoin button")
 
-		giveaway, err := h.UnconditionalGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
+		giveaway, err := h.JoinableGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetGiveawayByMessageId: %v", err)
 			return
 		}
 
@@ -181,95 +180,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 
-		participants, err := h.UnconditionalGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+		participants, err := h.JoinableGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetParticipantsForGiveaway: %v", err)
-			return
-		}
-
-		for _, participant := range participants {
-			if participant.UserId == i.Member.User.ID {
-				log.Debug("User is already a participant")
-				discord.RespondWithEphemeralMessage(ctx, s, i, "Już jesteś uczestnikiem tego giveawayu!")
-				return
-			}
-		}
-
-		err = h.UnconditionalGiveawayRepo.InsertParticipant(ctx, giveaway.Id, i.Member.User.ID, i.Member.User.Username)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.InsertParticipant: %v", err)
-			return
-		}
-
-		log.Infof("%s joined unconditional giveaway", i.Member.User.Username)
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Zostałeś dodany do giveawayu!")
-
-		// Edit embed to show new participant
-		log.Debug("Editing message to show new participant...")
-
-		participantsCount, err := h.UnconditionalGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.CountParticipantsForGiveaway: %v", err)
-			return
-		}
-
-		embed := discord.ConstructUnconditionalGiveawayJoinEmbed(h.CraftserveUrl, participantsCount)
-		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)
-			return
-		}
-	case "unconditionalwinnercode":
-		log.Debug("User clicked unconditionalwinnercode button")
-
-		hasWon, err := h.UnconditionalGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
-			return
-		}
-
-		if !hasWon {
-			log.Debug("User has not won the giveaway")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
-			return
-		}
-
-		log.Debug("User has won the giveaway, getting code...")
-		code, err := h.UnconditionalGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#UnconditionalGiveawayRepo.GetCodesForInfoMessage: %v", err)
-			return
-		}
-
-		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(h.CraftserveUrl, code)},
-			},
-		})
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#session.InteractionRespond: %v", err)
-			return
-		}
-	case "conditionalgiveawayjoin":
-		log.Debug("User clicked conditionalgiveawayjoin button")
-
-		giveaway, err := h.ConditionalGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.GetGiveawayByMessageId: %v", err)
-			return
-		}
-
-		if giveaway.EndTime != nil {
-			log.Debug("Giveaway has ended")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
-			return
-		}
-
-		participants, err := h.ConditionalGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
-		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.GetParticipantsForGiveaway: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetParticipantsForGiveaway: %v", err)
 			return
 		}
 
@@ -287,48 +200,55 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 
-		if memberLevel < giveaway.Level {
-			log.Debug("User does not have required level")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie masz wymaganego poziomu, żeby wziąć udział w tym giveawayu!")
-			return
+		if giveaway.Level != nil {
+			if memberLevel < *giveaway.Level {
+				log.Debug("User does not have required level")
+				discord.RespondWithEphemeralMessage(ctx, s, i, "Nie masz wymaganego poziomu, żeby wziąć udział w tym giveawayu!")
+				return
+			}
 		}
 
-		err = h.ConditionalGiveawayRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, i.Member.User.ID, i.Member.User.Username)
+		err = h.JoinableGiveawayRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, i.Member.User.ID, i.Member.User.Username)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.InsertParticipant: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.InsertParticipant: %v", err)
 			return
 		}
 
-		log.Infof("%s joined conditional giveaway", i.Member.User.Username)
+		log.Infof("%s joined joinable giveaway", i.Member.User.Username)
 		discord.RespondWithEphemeralMessage(ctx, s, i, "Zostałeś dodany do giveawayu!")
 
 		// Edit embed to count new participant
 		log.Debug("Editing message to count new participant...")
 
-		participantsCount, err := h.ConditionalGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
+		participantsCount, err := h.JoinableGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.CountParticipantsForGiveaway: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.CountParticipantsForGiveaway: %v", err)
 			return
 		}
 
-		levelRole, err := discord.GetRoleForLevel(ctx, s, i.GuildID, giveaway.Level)
-		if err != nil {
-			log.WithError(err).Error("Could not get role for level")
-			return
+		var embed *discordgo.MessageEmbed
+		if giveaway.Level != nil {
+			levelRole, err := discord.GetRoleForLevel(ctx, s, i.GuildID, *giveaway.Level)
+			if err != nil {
+				log.WithError(err).Error("Could not get role for level")
+				return
+			}
+			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, participantsCount, &levelRole.ID)
+		} else {
+			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, participantsCount, nil)
 		}
 
-		embed := discord.ConstructConditionalGiveawayJoinEmbed(h.CraftserveUrl, levelRole.ID, participantsCount)
 		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 		if err != nil {
 			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)
 			return
 		}
-	case "conditionalwinnercode":
-		log.Debug("User clicked conditionalwinnercode button")
+	case "joinablewinnercode":
+		log.Debug("User clicked joinablewinnercode button")
 
-		hasWon, err := h.ConditionalGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		hasWon, err := h.JoinableGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
 			return
 		}
 
@@ -339,9 +259,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		log.Debug("User has won the giveaway, getting code...")
-		code, err := h.ConditionalGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
+		code, err := h.JoinableGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#ConditionalGiveawayRepo.GetCodesForInfoMessage: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetCodesForInfoMessage: %v", err)
 			return
 		}
 

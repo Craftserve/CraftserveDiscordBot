@@ -446,10 +446,12 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		go h.GiveawayService.FinishMessageGiveaway(ctx, s, guild.ID)
 	case "unconditional":
 		log.Debug("Starting unconditional giveaway")
-		go h.GiveawayService.FinishUnconditionalGiveaway(ctx, s, guild.ID)
+		//go h.GiveawayService.FinishUnconditionalGiveaway(ctx, s, guild.ID)
+		go h.GiveawayService.FinishJoinableGiveaway(ctx, s, guild.ID, false)
 	case "conditional":
 		log.Debug("Starting conditional giveaway")
-		go h.GiveawayService.FinishConditionalGiveaway(ctx, s, guild.ID)
+		//go h.GiveawayService.FinishConditionalGiveaway(ctx, s, guild.ID)
+		go h.GiveawayService.FinishJoinableGiveaway(ctx, s, guild.ID, true)
 	}
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
 }

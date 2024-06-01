@@ -88,8 +88,7 @@ func main() {
 
 	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
 	var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
-	var unconditionalGiveawayRepo = repos.NewUnconditionalGiveawayRepo(dbMap)
-	var conditionalGiveawayRepo = repos.NewConditionalGiveawayRepo(dbMap)
+	var joinableGiveawayRepo = repos.NewJoinableGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 
@@ -101,7 +100,7 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl)
 	var githubClient = services.NewGithubClient()
-	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, unconditionalGiveawayRepo, conditionalGiveawayRepo)
+	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, joinableGiveawayRepo)
 	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
 	var savedRoleService = services.NewSavedRoleService(userRepo)
 
@@ -120,7 +119,7 @@ func main() {
 	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawayRepo, messageGiveawayRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, unconditionalGiveawayRepo, conditionalGiveawayRepo)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, joinableGiveawayRepo)
 	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
@@ -168,14 +167,16 @@ func main() {
 	}
 
 	err = c.AddFunc(BotConfig.UnconditionalGiveawayCron, func() {
-		giveawayService.FinishUnconditionalGiveaways(ctx, session)
+		giveawayService.FinishJoinableGiveaways(ctx, session, false)
+		//giveawayService.FinishUnconditionalGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Fatalf("Could not set unconditional giveaway cron job: %v", err)
 	}
 
 	err = c.AddFunc(BotConfig.ConditionalGiveawayCron, func() {
-		giveawayService.FinishConditionalGiveaways(ctx, session)
+		giveawayService.FinishJoinableGiveaways(ctx, session, true)
+		//giveawayService.FinishConditionalGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Fatalf("Could not set conditional giveaway cron job: %v", err)
