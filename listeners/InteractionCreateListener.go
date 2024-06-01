@@ -175,7 +175,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		if giveaway.EndTime != nil {
-			log.Debug("SqlGiveaway has ended")
+			log.Debug("Giveaway has ended")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
 			return
 		}
@@ -334,8 +334,8 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		}
 
 		if giveaway.EndTime != nil {
-			log.Debug("SqlGiveaway has ended")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "SqlGiveaway już się zakończył!")
+			log.Debug("Giveaway has ended")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Giveaway już się zakończył!")
 			return
 		}
 
