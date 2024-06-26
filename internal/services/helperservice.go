@@ -2,23 +2,23 @@ package services
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
 )
 
 type HelperService struct {
-	ServerRepo   repos.ServerRepo
-	GiveawayRepo repos.GiveawayRepo
-	UserRepo     repos.UserRepo
+	ServerRepo   entities.ServerRepo
+	GiveawayRepo entities.GiveawayRepo
+	UserRepo     entities.UserRepo
 }
 
-func NewHelperService(serverRepo *repos.ServerRepo, giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo) *HelperService {
+func NewHelperService(serverRepo entities.ServerRepo, giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo) *HelperService {
 	return &HelperService{
-		ServerRepo:   *serverRepo,
-		GiveawayRepo: *giveawayRepo,
-		UserRepo:     *userRepo,
+		ServerRepo:   serverRepo,
+		GiveawayRepo: giveawayRepo,
+		UserRepo:     userRepo,
 	}
 }
 

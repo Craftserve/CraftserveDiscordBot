@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
@@ -13,16 +13,18 @@ type GiveawayCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
-	GiveawayRepo  repos.GiveawayRepo
+	GiveawayRepo  entities.GiveawayRepo
+	CraftserveUrl string
 }
 
-func NewGiveawayCommand(giveawayRepo *repos.GiveawayRepo, giveawayHours string) GiveawayCommand {
+func NewGiveawayCommand(giveawayRepo entities.GiveawayRepo, giveawayHours, craftserveUrl string) GiveawayCommand {
 	return GiveawayCommand{
 		Name:          "giveaway",
 		Description:   "Wyświetla zasady giveawaya",
 		DMPermission:  false,
-		GiveawayRepo:  *giveawayRepo,
+		GiveawayRepo:  giveawayRepo,
 		GiveawayHours: giveawayHours,
+		CraftserveUrl: craftserveUrl,
 	}
 }
 
@@ -56,7 +58,7 @@ func (h GiveawayCommand) Handle(ctx context.Context, s *discordgo.Session, i *di
 		Data: &discordgo.InteractionResponseData{
 			Flags: discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				discord.ConstructInfoEmbed(participants, h.GiveawayHours),
+				discord.ConstructInfoEmbed(h.CraftserveUrl, participants, h.GiveawayHours),
 			},
 		},
 	})

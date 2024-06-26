@@ -2,17 +2,17 @@ package services
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/logger"
 )
 
 type SavedroleService struct {
-	UserRepo repos.UserRepo
+	UserRepo entities.UserRepo
 }
 
-func NewSavedRoleService(userRepo *repos.UserRepo) *SavedroleService {
+func NewSavedRoleService(userRepo entities.UserRepo) *SavedroleService {
 	return &SavedroleService{
-		UserRepo: *userRepo,
+		UserRepo: userRepo,
 	}
 }
 

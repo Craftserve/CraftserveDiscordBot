@@ -26,6 +26,14 @@ func ConfigureLogger() {
 
 	Logger.SetLevel(logrus.DebugLevel)
 	Logger.SetFormatter(Formatter)
+
+	Logger.AddHook(NewSentryHook([]logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.DebugLevel,
+		logrus.InfoLevel,
+	}))
 }
 
 func GetLoggerFromContext(ctx context.Context) MyLogger {

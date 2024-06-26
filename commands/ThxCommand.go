@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"database/sql"
@@ -15,20 +15,22 @@ type ThxCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
-	GiveawayRepo  repos.GiveawayRepo
-	UserRepo      repos.UserRepo
-	ServerRepo    repos.ServerRepo
+	CraftserveUrl string
+	GiveawayRepo  entities.GiveawayRepo
+	UserRepo      entities.UserRepo
+	ServerRepo    entities.ServerRepo
 }
 
-func NewThxCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, serverRepo *repos.ServerRepo, giveawayHours string) ThxCommand {
+func NewThxCommand(giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
 	return ThxCommand{
 		Name:          "thx",
 		Description:   "Podziękowanie innemu użytkownikowi",
 		DMPermission:  false,
-		GiveawayRepo:  *giveawayRepo,
-		UserRepo:      *userRepo,
-		ServerRepo:    *serverRepo,
+		GiveawayRepo:  giveawayRepo,
+		UserRepo:      userRepo,
+		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
+		CraftserveUrl: craftserveUrl,
 	}
 }
 
@@ -126,31 +128,14 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 
-	embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, selectedUser.ID, "", "wait")
+	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, selectedUser.ID, "", "wait")
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.SuccessButton,
-							CustomID: "accept",
-							Emoji: discordgo.ComponentEmoji{
-								Name: "✅",
-							},
-						},
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.DangerButton,
-							CustomID: "reject",
-							Emoji: discordgo.ComponentEmoji{
-								Name: "⛔",
-							},
-						},
-					},
+					Components: discord.ConstructAcceptRejectComponents(false),
 				},
 			},
 			Embeds: []*discordgo.MessageEmbed{embed},
@@ -195,7 +180,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
-		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return
@@ -208,7 +193,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 			return
 		}
 	} else {
-		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait")
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, response.ID, selectedUser.ID, "", "wait", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleThxCommand#discord.NotifyThxOnThxInfoChannel")
 			return

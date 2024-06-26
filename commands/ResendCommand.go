@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"github.com/bwmarrin/discordgo"
@@ -12,17 +12,19 @@ type ResendCommand struct {
 	Name                string
 	Description         string
 	DMPermission        bool
-	GiveawayRepo        repos.GiveawayRepo
-	MessageGiveawayRepo repos.MessageGiveawayRepo
+	CraftserveUrl       string
+	GiveawayRepo        entities.GiveawayRepo
+	MessageGiveawayRepo entities.MessageGiveawayRepo
 }
 
-func NewResendCommand(giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo) ResendCommand {
+func NewResendCommand(giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, craftserveUrl string) ResendCommand {
 	return ResendCommand{
 		Name:                "resend",
 		Description:         "Wysyła na PW ostatnie 10 wygranych kodów z giveawayi",
 		DMPermission:        false,
-		GiveawayRepo:        *giveawayRepo,
-		MessageGiveawayRepo: *messageGiveawayRepo,
+		CraftserveUrl:       craftserveUrl,
+		GiveawayRepo:        giveawayRepo,
+		MessageGiveawayRepo: messageGiveawayRepo,
 	}
 }
 
@@ -51,8 +53,8 @@ func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 		log.WithError(err).Error("ResendCommand#h.MessageGiveawayRepo.GetLastCodesForUser")
 		return
 	}
-	thxEmbed := discord.ConstructResendEmbed(thxCodes)
-	msgEmbed := discord.ConstructResendEmbed(msgCodes)
+	thxEmbed := discord.ConstructResendEmbed(h.CraftserveUrl, thxCodes)
+	msgEmbed := discord.ConstructResendEmbed(h.CraftserveUrl, msgCodes)
 
 	log.Debug("Trying to create DM channel")
 	dm, err := s.UserChannelCreate(i.Member.User.ID)

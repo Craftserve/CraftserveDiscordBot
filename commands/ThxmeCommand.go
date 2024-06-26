@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"errors"
@@ -15,19 +15,19 @@ type ThxmeCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
-	GiveawayRepo  repos.GiveawayRepo
-	UserRepo      repos.UserRepo
-	ServerRepo    repos.ServerRepo
+	GiveawayRepo  entities.GiveawayRepo
+	UserRepo      entities.UserRepo
+	ServerRepo    entities.ServerRepo
 }
 
-func NewThxmeCommand(giveawayRepo *repos.GiveawayRepo, userRepo *repos.UserRepo, serverRepo *repos.ServerRepo, giveawayHours string) ThxmeCommand {
+func NewThxmeCommand(giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours string) ThxmeCommand {
 	return ThxmeCommand{
 		Name:          "thxme",
 		Description:   "Poproszenie użytkownika o podziękowanie",
 		DMPermission:  false,
-		GiveawayRepo:  *giveawayRepo,
-		UserRepo:      *userRepo,
-		ServerRepo:    *serverRepo,
+		GiveawayRepo:  giveawayRepo,
+		UserRepo:      userRepo,
+		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
 	}
 }
@@ -121,24 +121,7 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 		Data: &discordgo.InteractionResponseData{
 			Components: []discordgo.MessageComponent{
 				&discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.SuccessButton,
-							CustomID: "accept",
-							Emoji: discordgo.ComponentEmoji{
-								Name: "✅",
-							},
-						},
-						&discordgo.Button{
-							Label:    "",
-							Style:    discordgo.DangerButton,
-							CustomID: "reject",
-							Emoji: discordgo.ComponentEmoji{
-								Name: "⛔",
-							},
-						},
-					},
+					Components: discord.ConstructAcceptRejectComponents(false),
 				},
 			},
 			Content: fmt.Sprintf("%s, czy chcesz podziękować użytkownikowi %s?", selectedUser.Mention(), author.Username),

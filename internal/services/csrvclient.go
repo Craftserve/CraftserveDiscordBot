@@ -4,15 +4,19 @@ import (
 	"context"
 	"csrvbot/pkg/logger"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
 )
 
 type CsrvClient struct {
-	Secret string
+	Secret        string
+	Environment   string
+	CraftserveUrl string
 }
 
-func NewCsrvClient(secret string) *CsrvClient {
-	return &CsrvClient{Secret: secret}
+func NewCsrvClient(secret, environment, craftserveUrl string) *CsrvClient {
+	return &CsrvClient{Secret: secret, Environment: environment, CraftserveUrl: craftserveUrl}
 }
 
 type VoucherResponse struct {
@@ -22,7 +26,12 @@ type VoucherResponse struct {
 func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	log := logger.GetLoggerFromContext(ctx)
 	log.Debug("Generating CSRV voucher")
-	req, err := http.NewRequest("POST", "https://craftserve.pl/api/generate_voucher", nil)
+
+	if c.Environment == "development" {
+		return fmt.Sprintf("DEV-%d", rand.Int()), nil
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/generate_voucher", c.CraftserveUrl), nil)
 	if err != nil {
 		return "", err
 	}

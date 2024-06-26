@@ -3,7 +3,7 @@ package listeners
 import (
 	"context"
 	"csrvbot/commands"
-	"csrvbot/internal/repos"
+	"csrvbot/domain/entities"
 	"csrvbot/internal/services"
 	"csrvbot/pkg"
 	"csrvbot/pkg/discord"
@@ -15,32 +15,36 @@ import (
 )
 
 type InteractionCreateListener struct {
-	GiveawayCommand     commands.GiveawayCommand
-	ThxCommand          commands.ThxCommand
-	ThxmeCommand        commands.ThxmeCommand
-	CsrvbotCommand      commands.CsrvbotCommand
-	DocCommand          commands.DocCommand
-	ResendCommand       commands.ResendCommand
-	GiveawayHours       string
-	GiveawayRepo        repos.GiveawayRepo
-	MessageGiveawayRepo repos.MessageGiveawayRepo
-	ServerRepo          repos.ServerRepo
-	HelperService       services.HelperService
+	GiveawayCommand      commands.GiveawayCommand
+	ThxCommand           commands.ThxCommand
+	ThxmeCommand         commands.ThxmeCommand
+	CsrvbotCommand       commands.CsrvbotCommand
+	DocCommand           commands.DocCommand
+	ResendCommand        commands.ResendCommand
+	GiveawayHours        string
+	CraftserveUrl        string
+	GiveawayRepo         entities.GiveawayRepo
+	MessageGiveawayRepo  entities.MessageGiveawayRepo
+	ServerRepo           entities.ServerRepo
+	HelperService        services.HelperService
+	JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours string, giveawayRepo *repos.GiveawayRepo, messageGiveawayRepo *repos.MessageGiveawayRepo, serverRepo *repos.ServerRepo, helperService *services.HelperService) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, joinableGiveawayRepo entities.JoinableGiveawayRepo) InteractionCreateListener {
 	return InteractionCreateListener{
-		GiveawayCommand:     giveawayCommand,
-		ThxCommand:          thxCommand,
-		ThxmeCommand:        thxmeCommand,
-		CsrvbotCommand:      csrvbotCommand,
-		DocCommand:          docCommand,
-		ResendCommand:       resendCommand,
-		GiveawayHours:       giveawayHours,
-		GiveawayRepo:        *giveawayRepo,
-		MessageGiveawayRepo: *messageGiveawayRepo,
-		ServerRepo:          *serverRepo,
-		HelperService:       *helperService,
+		GiveawayCommand:      giveawayCommand,
+		ThxCommand:           thxCommand,
+		ThxmeCommand:         thxmeCommand,
+		CsrvbotCommand:       csrvbotCommand,
+		DocCommand:           docCommand,
+		ResendCommand:        resendCommand,
+		GiveawayHours:        giveawayHours,
+		CraftserveUrl:        craftserveUrl,
+		GiveawayRepo:         giveawayRepo,
+		MessageGiveawayRepo:  messageGiveawayRepo,
+		ServerRepo:           serverRepo,
+		HelperService:        *helperService,
+		JoinableGiveawayRepo: joinableGiveawayRepo,
 	}
 }
 
@@ -120,7 +124,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(code)},
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(h.CraftserveUrl, code)},
 			},
 		})
 		if err != nil {
@@ -151,7 +155,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{discord.ConstructMessageWinnerEmbed(codes)},
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructMessageWinnerEmbed(h.CraftserveUrl, codes)},
 			},
 		})
 		if err != nil {
@@ -160,6 +164,117 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 	case "accept", "reject":
 		h.handleAcceptDeclineButtons(ctx, s, i)
+	case "giveawayjoin":
+		log.Debug("User clicked giveawayjoin button")
+
+		giveaway, err := h.JoinableGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetGiveawayByMessageId: %v", err)
+			return
+		}
+
+		if giveaway.EndTime != nil {
+			log.Debug("Giveaway has ended")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Ten giveaway już się zakończył!")
+			return
+		}
+
+		participants, err := h.JoinableGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetParticipantsForGiveaway: %v", err)
+			return
+		}
+
+		for _, participant := range participants {
+			if participant.UserId == i.Member.User.ID {
+				log.Debug("User is already a participant")
+				discord.RespondWithEphemeralMessage(ctx, s, i, "Już jesteś uczestnikiem tego giveawayu!")
+				return
+			}
+		}
+
+		memberLevel, err := discord.GetMemberLevel(ctx, s, i.Member, i.GuildID)
+		if err != nil {
+			log.WithError(err).Error("Could not get member level")
+			return
+		}
+
+		if giveaway.Level != nil {
+			if memberLevel < *giveaway.Level {
+				log.Debug("User does not have required level")
+				discord.RespondWithEphemeralMessage(ctx, s, i, "Nie masz wymaganego poziomu, żeby wziąć udział w tym giveawayu!")
+				return
+			}
+		}
+
+		err = h.JoinableGiveawayRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, i.Member.User.ID, i.Member.User.Username)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.InsertParticipant: %v", err)
+			return
+		}
+
+		log.Infof("%s joined joinable giveaway", i.Member.User.Username)
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Zostałeś dodany do giveawayu!")
+
+		// Edit embed to count new participant
+		log.Debug("Editing message to count new participant...")
+
+		participantsCount, err := h.JoinableGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.CountParticipantsForGiveaway: %v", err)
+			return
+		}
+
+		var embed *discordgo.MessageEmbed
+		if giveaway.Level != nil {
+			levelRole, err := discord.GetRoleForLevel(ctx, s, i.GuildID, *giveaway.Level)
+			if err != nil {
+				log.WithError(err).Error("Could not get role for level")
+				return
+			}
+			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, participantsCount, &levelRole.ID)
+		} else {
+			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, participantsCount, nil)
+		}
+
+		_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#session.ChannelMessageEditEmbed: %v", err)
+			return
+		}
+	case "joinablewinnercode":
+		log.Debug("User clicked joinablewinnercode button")
+
+		hasWon, err := h.JoinableGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			return
+		}
+
+		if !hasWon {
+			log.Debug("User has not won the giveaway")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie wygrałeś tego giveawayu!")
+			return
+		}
+
+		log.Debug("User has won the giveaway, getting code...")
+		code, err := h.JoinableGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetCodesForInfoMessage: %v", err)
+			return
+		}
+
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{discord.ConstructWinnerEmbed(h.CraftserveUrl, code)},
+			},
+		})
+		if err != nil {
+			log.WithError(err).Errorf("handleMessageComponents#session.InteractionRespond: %v", err)
+			return
+		}
 	}
 }
 
@@ -211,12 +326,13 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			return
 		}
 
-		giveawayEnded, err := h.GiveawayRepo.IsGiveawayEnded(ctx, participant.GiveawayId)
+		giveaway, err := h.GiveawayRepo.GetGiveawayById(ctx, participant.GiveawayId)
 		if err != nil {
-			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.IsGiveawayEnded: %v", err)
+			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetGiveawayById: %v", err)
 			return
 		}
-		if giveawayEnded {
+
+		if giveaway.EndTime != nil {
 			log.Debug("Giveaway has ended")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Giveaway już się zakończył!")
 			return
@@ -245,7 +361,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -254,7 +370,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(notificationErr, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -267,7 +383,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "confirm", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -292,7 +408,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -301,7 +417,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(notificationErr, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -314,7 +430,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, participant.UserId, member.User.ID, "reject", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -361,7 +477,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
 
 			content := "Prośba o podziękowanie zaakceptowana przez: " + member.User.Mention()
 			_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
@@ -404,7 +520,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			if errors.Is(err, sql.ErrNoRows) {
-				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait")
+				notificationMessageId, err := discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, "", i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
@@ -417,7 +533,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 					return
 				}
 			} else {
-				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait")
+				_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, i.Message.ID, candidate.CandidateId, "", "wait", h.CraftserveUrl)
 				if err != nil {
 					log.WithError(err).Error("Could not notify thx on thx info channel")
 					return
