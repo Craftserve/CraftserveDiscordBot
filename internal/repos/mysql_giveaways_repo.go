@@ -388,9 +388,7 @@ func (repo GiveawaysRepo) GetGiveawayByMessageId(ctx context.Context, messageId 
 	return FromSqlGiveaways(&giveaway), nil
 }
 
-// TO-REMOVE: Current giveaway repo
 func (repo GiveawaysRepo) InsertParticipantCandidate(ctx context.Context, guildId, guildName, candidateId, candidateName, approverId, approverName, channelId, messageId string, giveawayId int) error {
-	// TODO: Update candidate
 	candidate := &SqlThxParticipantCandidate{
 		CandidateId:           candidateId,
 		CandidateName:         candidateName,
