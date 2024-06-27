@@ -9,22 +9,21 @@ import (
 )
 
 type ResendCommand struct {
-	Name                string
-	Description         string
-	DMPermission        bool
-	CraftserveUrl       string
-	GiveawayRepo        entities.GiveawayRepo
-	MessageGiveawayRepo entities.MessageGiveawayRepo
+	Name          string
+	Description   string
+	DMPermission  bool
+	CraftserveUrl string
+	GiveawaysRepo entities.GiveawaysRepo
+	//MessageGiveawayRepo entities.MessageGiveawayRepo
 }
 
-func NewResendCommand(giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, craftserveUrl string) ResendCommand {
+func NewResendCommand(giveawaysRepo entities.GiveawaysRepo, craftserveUrl string) ResendCommand {
 	return ResendCommand{
-		Name:                "resend",
-		Description:         "Wysyła na PW ostatnie 10 wygranych kodów z giveawayi",
-		DMPermission:        false,
-		CraftserveUrl:       craftserveUrl,
-		GiveawayRepo:        giveawayRepo,
-		MessageGiveawayRepo: messageGiveawayRepo,
+		Name:          "resend",
+		Description:   "Wysyła na PW ostatnie 10 wygranych kodów z giveawayi",
+		DMPermission:  false,
+		CraftserveUrl: craftserveUrl,
+		GiveawaysRepo: giveawaysRepo,
 	}
 }
 
@@ -43,14 +42,14 @@ func (h ResendCommand) Register(ctx context.Context, s *discordgo.Session) {
 
 func (h ResendCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
-	thxCodes, err := h.GiveawayRepo.GetLastCodesForUser(ctx, i.Member.User.ID, 10)
+	thxCodes, err := h.GiveawaysRepo.GetLastCodesForUser(ctx, i.Member.User.ID, entities.ThxGiveawayType, 10)
 	if err != nil {
-		log.WithError(err).Error("ResendCommand#h.GiveawayRepo.GetLastCodesForUser")
+		log.WithError(err).Error("ResendCommand#h.GiveawaysRepo.GetLastCodesForUser")
 		return
 	}
-	msgCodes, err := h.MessageGiveawayRepo.GetLastCodesForUser(ctx, i.Member.User.ID, 10)
+	msgCodes, err := h.GiveawaysRepo.GetLastCodesForUser(ctx, i.Member.User.ID, entities.MessageGiveawayType, 10)
 	if err != nil {
-		log.WithError(err).Error("ResendCommand#h.MessageGiveawayRepo.GetLastCodesForUser")
+		log.WithError(err).Error("ResendCommand#h.MessageGiveawaysRepo.GetLastCodesForUser")
 		return
 	}
 	thxEmbed := discord.ConstructResendEmbed(h.CraftserveUrl, thxCodes)

@@ -22,7 +22,7 @@ type CsrvbotCommand struct {
 	GiveawayHours            string
 	CraftserveUrl            string
 	ServerRepo               entities.ServerRepo
-	GiveawayRepo             entities.GiveawayRepo
+	GiveawaysRepo            entities.GiveawaysRepo
 	UserRepo                 entities.UserRepo
 	CsrvClient               services.CsrvClient
 	GiveawayService          services.GiveawayService
@@ -53,7 +53,7 @@ const (
 	ConditionalGiveawayLevelsSubcommand    = "conditionalgiveawaylevels"
 )
 
-func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo entities.ServerRepo, giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
+func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo entities.ServerRepo, giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
 		Name:                     "csrvbot",
 		Description:              "Komendy konfiguracyjne i administracyjne",
@@ -63,7 +63,7 @@ func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo entities.
 		GiveawayHours:            giveawayHours,
 		CraftserveUrl:            craftserveUrl,
 		ServerRepo:               serverRepo,
-		GiveawayRepo:             giveawayRepo,
+		GiveawaysRepo:            giveawaysRepo,
 		UserRepo:                 userRepo,
 		CsrvClient:               *csrvClient,
 		GiveawayService:          *giveawayService,
@@ -458,53 +458,66 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 
 func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
-	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, i.GuildID, entities.ThxGiveawayType)
 	if err != nil {
-		log.WithError(err).Error("handleDelete h.GiveawayRepo.GetGiveawayForGuild")
+		log.WithError(err).Error("handleDelete h.GiveawaysRepo.GetGiveawayForGuild")
 		return
 	}
-	participants, err := h.GiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+	participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, giveaway.Id, nil)
 	if err != nil {
-		log.WithError(err).Error("handleDelete h.GiveawayRepo.GetParticipantsForGiveaway")
+		log.WithError(err).Error("handleDelete h.GiveawaysRepo.GetParticipantsForGiveaway")
 		return
 	}
 	selectedUser := i.ApplicationCommandData().Options[0].Options[0].UserValue(s)
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę usunięcia użytkownika z giveawayu")
 	log.Debug("Removing all entries from database for participant ", selectedUser.ID)
-	err = h.GiveawayRepo.RemoveAllParticipantEntries(ctx, giveaway.Id, selectedUser.ID)
+	err = h.GiveawaysRepo.RemoveAllThxParticipantEntries(ctx, giveaway.Id, selectedUser.ID)
 	if err != nil {
-		log.WithError(err).Error("handleDelete h.GiveawayRepo.RemoveAllParticipantEntries")
+		log.WithError(err).Error("handleDelete h.GiveawaysRepo.RemoveAllThxParticipantEntries")
 		return
 	}
 	log.Infof("%s removed all entries for user %s", i.Member.User.Username, selectedUser.Username)
-	participantNames, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
-	if err != nil {
-		log.WithError(err).Error("handleDelete h.GiveawayRepo.GetParticipantNamesForGiveaway")
-		return
-	}
+	//participantNames, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+	//if err != nil {
+	//	log.WithError(err).Error("handleDelete h.GiveawayRepo.GetParticipantNamesForGiveaway")
+	//	return
+	//}
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 	if err != nil {
 		log.WithError(err).Error("handleDelete h.ServerRepo.GetServerConfigForGuild")
 		return
 	}
+
+	var participantNames []string
+	for _, participant := range participants {
+		participantNames = append(participantNames, participant.UserName)
+	}
+
 	for _, participant := range participants {
 		if participant.UserId != selectedUser.ID {
 			return
 		}
-		log.WithMessage(participant.MessageId).Debug("Updating thx embed after entry deletion for participant ", participant.UserId)
+		log.WithMessage(*participant.MessageId).Debug("Updating thx embed after entry deletion for participant ", participant.UserId)
 		embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantNames, h.GiveawayHours, participant.UserId, "", "reject")
-		_, err = s.ChannelMessageEditEmbed(participant.ChannelId, participant.MessageId, embed)
+
+		candidate, err := h.GiveawaysRepo.GetParticipantCandidate(ctx, *participant.MessageId)
+		if err != nil {
+			log.WithError(err).Error("handleDelete h.GiveawaysRepo.GetParticipantCandidate")
+			return
+		}
+
+		_, err = s.ChannelMessageEditEmbed(candidate.ChannelId, *participant.MessageId, embed)
 		if err != nil {
 			log.WithError(err).Error("handleDelete s.ChannelMessageEditEmbed")
 			return
 		}
-		thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, participant.MessageId)
+		thxNotification, err := h.GiveawaysRepo.GetThxNotification(ctx, *participant.MessageId)
 		if err != nil {
-			log.WithError(err).Error("handleDelete h.GiveawayRepo.GetThxNotification")
+			log.WithError(err).Error("handleDelete h.GiveawaysRepo.GetThxNotification")
 			return
 		}
 		log.Debug("Updating thx notification message after entry deletion for participant ", participant.UserId)
-		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, participant.MessageId, participant.UserId, "", "reject", h.CraftserveUrl)
+		_, err = discord.NotifyThxOnThxInfoChannel(s, serverConfig.ThxInfoChannel, thxNotification.NotificationMessageId, i.GuildID, i.ChannelID, *participant.MessageId, participant.UserId, "", "reject", h.CraftserveUrl)
 		if err != nil {
 			log.WithError(err).Error("handleDelete discord.NotifyThxOnThxInfoChannel")
 			return
