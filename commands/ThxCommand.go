@@ -16,17 +16,17 @@ type ThxCommand struct {
 	DMPermission  bool
 	GiveawayHours string
 	CraftserveUrl string
-	GiveawayRepo  entities.GiveawayRepo
+	GiveawaysRepo entities.GiveawaysRepo
 	UserRepo      entities.UserRepo
 	ServerRepo    entities.ServerRepo
 }
 
-func NewThxCommand(giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
+func NewThxCommand(giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
 	return ThxCommand{
 		Name:          "thx",
 		Description:   "Podziękowanie innemu użytkownikowi",
 		DMPermission:  false,
-		GiveawayRepo:  giveawayRepo,
+		GiveawaysRepo: giveawaysRepo,
 		UserRepo:      userRepo,
 		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
@@ -117,28 +117,29 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		discord.RespondWithMessage(ctx, s, i, "Ten użytkownik jest na czarnej liście i nie może brać udziału :(")
 		return
 	}
-	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, i.GuildID, entities.ThxGiveawayType)
 	if err != nil {
-		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetGiveawayForGuild")
+		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.GetGiveawayForGuild")
 		return
 	}
-	participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+	participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, giveaway.Id, nil)
 	if err != nil {
-		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetParticipantNamesForGiveaway")
+		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.GetParticipantNamesForGiveaway")
 		return
 	}
 
-	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, selectedUser.ID, "", "wait")
+	var participantsNames []string
+	for _, participant := range participants {
+		participantsNames = append(participantsNames, participant.UserName)
+	}
+
+	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, selectedUser.ID, "", "wait")
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Components: []discordgo.MessageComponent{
-				&discordgo.ActionsRow{
-					Components: discord.ConstructAcceptRejectComponents(false),
-				},
-			},
-			Embeds: []*discordgo.MessageEmbed{embed},
+			Components: discord.ConstructAcceptRejectComponents(false),
+			Embeds:     []*discordgo.MessageEmbed{embed},
 		},
 	})
 	if err != nil {
@@ -153,9 +154,16 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 
 	log.Debug("Inserting participant into database")
-	err = h.GiveawayRepo.InsertParticipant(ctx, giveaway.Id, i.GuildID, guild.Name, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
+	level, err := discord.GetMemberLevel(ctx, s, i.Member, i.GuildID)
 	if err != nil {
-		log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertParticipant")
+		log.WithError(err).Error("handleThxCommand#discord.GetMemberLevel")
+		return
+	}
+
+	err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, level, guild.ID, selectedUser.ID, selectedUser.Username, &response.ID, &i.ChannelID)
+	//err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, i.GuildID, guild.Name, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
+	if err != nil {
+		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.InsertParticipant")
 		str := "Coś poszło nie tak przy dodawaniu podziękowania :("
 		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &str,
@@ -173,9 +181,9 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 
-	thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, response.ID)
+	thxNotification, err := h.GiveawaysRepo.GetThxNotification(ctx, response.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.WithError(err).Error("handleThxCommand#GiveawayRepo.GetThxNotification")
+		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.GetThxNotification")
 		return
 	}
 
@@ -187,9 +195,9 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		}
 
 		log.Debug("Inserting notification into database")
-		err = h.GiveawayRepo.InsertThxNotification(ctx, response.ID, notificationMessageId)
+		err = h.GiveawaysRepo.InsertThxNotification(ctx, response.ID, notificationMessageId)
 		if err != nil {
-			log.WithError(err).Error("handleThxCommand#GiveawayRepo.InsertThxNotification")
+			log.WithError(err).Error("handleThxCommand#GiveawaysRepo.InsertThxNotification")
 			return
 		}
 	} else {

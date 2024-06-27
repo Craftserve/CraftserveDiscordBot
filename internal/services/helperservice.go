@@ -9,16 +9,17 @@ import (
 )
 
 type HelperService struct {
-	ServerRepo   entities.ServerRepo
-	GiveawayRepo entities.GiveawayRepo
-	UserRepo     entities.UserRepo
+	ServerRepo entities.ServerRepo
+	//GiveawayRepo  entities.GiveawayRepo
+	UserRepo      entities.UserRepo
+	GiveawaysRepo entities.GiveawaysRepo
 }
 
-func NewHelperService(serverRepo entities.ServerRepo, giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo) *HelperService {
+func NewHelperService(serverRepo entities.ServerRepo, userRepo entities.UserRepo, giveawaysRepo entities.GiveawaysRepo) *HelperService {
 	return &HelperService{
-		ServerRepo:   serverRepo,
-		GiveawayRepo: giveawayRepo,
-		UserRepo:     userRepo,
+		ServerRepo:    serverRepo,
+		UserRepo:      userRepo,
+		GiveawaysRepo: giveawaysRepo,
 	}
 }
 
@@ -38,9 +39,9 @@ func (h *HelperService) CheckHelpers(ctx context.Context, session *discordgo.Ses
 		return
 	}
 
-	helpers, err := h.GiveawayRepo.GetParticipantsWithThxAmount(ctx, guildId, serverConfig.HelperRoleThxesNeeded)
+	helpers, err := h.GiveawaysRepo.GetParticipantsWithThxAmount(ctx, guildId, serverConfig.HelperRoleThxesNeeded)
 	if err != nil {
-		log.WithError(err).Error("CheckHelpers#GiveawayRepo.GetParticipantsWithThxAmount")
+		log.WithError(err).Error("CheckHelpers#GiveawaysRepo.GetParticipantsWithThxAmount")
 		return
 	}
 
@@ -97,9 +98,9 @@ func (h *HelperService) CheckHelper(ctx context.Context, session *discordgo.Sess
 		return
 	}
 
-	hasHelperAmount, err := h.GiveawayRepo.HasThxAmount(ctx, guildId, memberId, serverConfig.HelperRoleThxesNeeded)
+	hasHelperAmount, err := h.GiveawaysRepo.HasThxAmount(ctx, guildId, memberId, serverConfig.HelperRoleThxesNeeded)
 	if err != nil {
-		log.WithError(err).Error("CheckHelper#GiveawayRepo.HasThxAmount")
+		log.WithError(err).Error("CheckHelper#GiveawaysRepo.HasThxAmount")
 		return
 	}
 	isHelperBlacklisted, err := h.UserRepo.IsUserHelperBlacklisted(ctx, memberId, guildId)

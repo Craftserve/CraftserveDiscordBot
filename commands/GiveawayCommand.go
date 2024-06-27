@@ -13,16 +13,16 @@ type GiveawayCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
-	GiveawayRepo  entities.GiveawayRepo
+	GiveawaysRepo entities.GiveawaysRepo
 	CraftserveUrl string
 }
 
-func NewGiveawayCommand(giveawayRepo entities.GiveawayRepo, giveawayHours, craftserveUrl string) GiveawayCommand {
+func NewGiveawayCommand(giveawaysRepo entities.GiveawaysRepo, giveawayHours, craftserveUrl string) GiveawayCommand {
 	return GiveawayCommand{
 		Name:          "giveaway",
 		Description:   "Wyświetla zasady giveawaya",
 		DMPermission:  false,
-		GiveawayRepo:  giveawayRepo,
+		GiveawaysRepo: giveawaysRepo,
 		GiveawayHours: giveawayHours,
 		CraftserveUrl: craftserveUrl,
 	}
@@ -43,22 +43,28 @@ func (h GiveawayCommand) Register(ctx context.Context, s *discordgo.Session) {
 
 func (h GiveawayCommand) Handle(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
-	giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, i.GuildID, entities.ThxGiveawayType)
 	if err != nil {
 		log.WithError(err).Error("Could not get giveaway")
 		return
 	}
-	participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+	participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, giveaway.Id, nil)
 	if err != nil {
 		log.WithError(err).Error("Could not get participants")
 		return
 	}
+
+	var participantsNames []string
+	for _, participant := range participants {
+		participantsNames = append(participantsNames, participant.UserName)
+	}
+
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Flags: discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				discord.ConstructInfoEmbed(h.CraftserveUrl, participants, h.GiveawayHours),
+				discord.ConstructInfoEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours),
 			},
 		},
 	})

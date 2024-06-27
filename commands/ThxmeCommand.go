@@ -15,17 +15,17 @@ type ThxmeCommand struct {
 	Description   string
 	DMPermission  bool
 	GiveawayHours string
-	GiveawayRepo  entities.GiveawayRepo
+	GiveawaysRepo entities.GiveawaysRepo
 	UserRepo      entities.UserRepo
 	ServerRepo    entities.ServerRepo
 }
 
-func NewThxmeCommand(giveawayRepo entities.GiveawayRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours string) ThxmeCommand {
+func NewThxmeCommand(giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours string) ThxmeCommand {
 	return ThxmeCommand{
 		Name:          "thxme",
 		Description:   "Poproszenie użytkownika o podziękowanie",
 		DMPermission:  false,
-		GiveawayRepo:  giveawayRepo,
+		GiveawaysRepo: giveawaysRepo,
 		UserRepo:      userRepo,
 		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
@@ -119,12 +119,8 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Components: []discordgo.MessageComponent{
-				&discordgo.ActionsRow{
-					Components: discord.ConstructAcceptRejectComponents(false),
-				},
-			},
-			Content: fmt.Sprintf("%s, czy chcesz podziękować użytkownikowi %s?", selectedUser.Mention(), author.Username),
+			Components: discord.ConstructAcceptRejectComponents(false),
+			Content:    fmt.Sprintf("%s, czy chcesz podziękować użytkownikowi %s?", selectedUser.Mention(), author.Username),
 		},
 	})
 	if err != nil {
@@ -138,10 +134,16 @@ func (h ThxmeCommand) Handle(ctx context.Context, s *discordgo.Session, i *disco
 		return
 	}
 
-	log.Debug("Inserting participant candidate into database")
-	err = h.GiveawayRepo.InsertParticipantCandidate(ctx, i.GuildID, guild.Name, author.ID, author.Username, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
+	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, i.GuildID, entities.ThxGiveawayType)
 	if err != nil {
-		log.WithError(err).Error("handleThxmeCommand#GiveawayRepo.InsertParticipantCandidate")
+		log.WithError(err).Error("handleThxmeCommand#GiveawaysRepo.GetGiveawayForGuild")
+		return
+	}
+
+	log.Debug("Inserting participant candidate into database")
+	err = h.GiveawaysRepo.InsertParticipantCandidate(ctx, i.GuildID, guild.Name, author.ID, author.Username, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID, giveaway.Id)
+	if err != nil {
+		log.WithError(err).Error("handleThxmeCommand#GiveawaysRepo.InsertParticipantCandidate")
 		str := "Coś poszło nie tak przy dodawaniu kandydata do podziękowania :("
 		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &str,

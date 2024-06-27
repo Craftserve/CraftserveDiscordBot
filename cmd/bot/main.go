@@ -86,11 +86,12 @@ func main() {
 		log.Panic(err)
 	}
 
-	var giveawayRepo = repos.NewGiveawayRepo(dbMap)
-	var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
-	var joinableGiveawayRepo = repos.NewJoinableGiveawayRepo(dbMap)
+	//var giveawayRepo = repos.NewGiveawayRepo(dbMap)
+	//var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
+	//var joinableGiveawayRepo = repos.NewJoinableGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
+	var giveawaysRepo = repos.NewGiveawaysRepo(dbMap)
 
 	log.Debug("Creating tables...")
 	err = db.CreateTablesIfNotExists()
@@ -100,8 +101,8 @@ func main() {
 
 	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl)
 	var githubClient = services.NewGithubClient()
-	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawayRepo, messageGiveawayRepo, joinableGiveawayRepo)
-	var helperService = services.NewHelperService(serverRepo, giveawayRepo, userRepo)
+	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawaysRepo)
+	var helperService = services.NewHelperService(serverRepo, userRepo, giveawaysRepo)
 	var savedRoleService = services.NewSavedRoleService(userRepo)
 
 	log.Debug("Initializing discordgo session")
@@ -113,17 +114,17 @@ func main() {
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
 	log.Debugf("Running with intents: Guilds, GuildMessages, GuildMembers (%v)", session.Identify.Intents)
 
-	var giveawayCommand = commands.NewGiveawayCommand(giveawayRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
-	var thxCommand = commands.NewThxCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
-	var thxmeCommand = commands.NewThxmeCommand(giveawayRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
-	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, serverRepo, giveawayRepo, userRepo, csrvClient, giveawayService, helperService)
+	var giveawayCommand = commands.NewGiveawayCommand(giveawaysRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
+	var thxCommand = commands.NewThxCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
+	var thxmeCommand = commands.NewThxmeCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
+	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
-	var resendCommand = commands.NewResendCommand(giveawayRepo, messageGiveawayRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawayRepo, messageGiveawayRepo, serverRepo, helperService, joinableGiveawayRepo)
-	var guildCreateListener = listeners.NewGuildCreateListener(giveawayRepo, serverRepo, giveawayService, helperService, savedRoleService)
+	var resendCommand = commands.NewResendCommand(giveawaysRepo, BotConfig.CraftserveUrl)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService)
+	var guildCreateListener = listeners.NewGuildCreateListener(serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
-	var messageCreateListener = listeners.NewMessageCreateListener(messageGiveawayRepo)
+	var messageCreateListener = listeners.NewMessageCreateListener(giveawaysRepo)
 	session.AddHandler(interactionCreateListener.Handle)
 	session.AddHandler(guildCreateListener.Handle)
 	session.AddHandler(guildMemberAddListener.Handle)

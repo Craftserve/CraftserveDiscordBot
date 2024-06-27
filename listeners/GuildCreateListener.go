@@ -14,16 +14,16 @@ import (
 )
 
 type GuildCreateListener struct {
-	GiveawayRepo     entities.GiveawayRepo
+	//GiveawaysRepo    entities.GiveawaysRepo // unused
 	ServerRepo       entities.ServerRepo
 	GiveawayService  services.GiveawayService
 	HelperService    services.HelperService
 	SavedRoleService services.SavedroleService
 }
 
-func NewGuildCreateListener(giveawayRepo entities.GiveawayRepo, serverRepo entities.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
+func NewGuildCreateListener(serverRepo entities.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
 	return GuildCreateListener{
-		GiveawayRepo:     giveawayRepo,
+		//GiveawaysRepo:    giveawaysRepo,
 		ServerRepo:       serverRepo,
 		GiveawayService:  *giveawayService,
 		HelperService:    *helperService,
