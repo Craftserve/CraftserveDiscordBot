@@ -2,22 +2,12 @@ name: Publish image
 on:
   workflow_dispatch:
     inputs:
-      registry:
-        description: 'Registry to publish image to'
-        required: true
       tag:
         description: 'Tag for image'
         required: true
         default: 'stable'
-      username:
-        description: 'Username for registry'
-        required: true
-      password:
-        description: 'Password for registry'
-        required: true
 
 env:
-  REGISTRY: ${{ github.event.inputs.registry }}
   TAG: ${{ github.event.inputs.tag }}
 
 jobs:
@@ -29,7 +19,8 @@ jobs:
       - name: Login to registry
         uses: docker/login-action@v3
         with:
-          username: ${{ github.event.inputs.username }}
-          password: ${{ github.event.inputs.password }}
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Publish image
-        run: make publish REGISTRY=${{ env.REGISTRY }} TAG=${{ env.TAG }}
+        run: make publish REGISTRY=${{ secrets.REGISTRY }} TAG=${{ env.TAG }}
