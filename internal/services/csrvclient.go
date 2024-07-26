@@ -4,6 +4,8 @@ import (
 	"context"
 	"csrvbot/pkg/logger"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -34,9 +36,13 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	}
 
 	var code VoucherResponse
-	err = json.NewDecoder(resp.Body).Decode(&code)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+	err = json.Unmarshal(bodyBytes, &code)
+	if err != nil {
+		return "", fmt.Errorf("getCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
 	}
 	err = resp.Body.Close()
 	if err != nil {
