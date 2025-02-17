@@ -32,8 +32,14 @@ func init() {
 	ctx := pkg.CreateContext()
 	logger.ConfigureLogger()
 	log := logger.GetLoggerFromContext(ctx)
+
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.json"
+	}
+
 	log.Debug("Opening config.json")
-	configFile, err := os.Open("config.json")
+	configFile, err := os.Open(configPath)
 	if err != nil {
 		log.Panic(err)
 	}
