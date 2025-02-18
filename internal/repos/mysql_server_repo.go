@@ -30,7 +30,7 @@ type SqlServerConfig struct {
 	UnconditionalGiveawayWinners int             `db:"unconditional_giveaway_winners,default:0"`
 	ConditionalGiveawayChannel   string          `db:"conditional_giveaway_channel,size:255"`
 	ConditionalGiveawayWinners   int             `db:"conditional_giveaway_winners,default:0"`
-	ConditionalGiveawayLevels    json.RawMessage `db:"conditional_giveaway_levels"`
+	ConditionalGiveawayLevels    json.RawMessage `db:"conditional_giveaway_levels,default:'[]'"`
 }
 
 func FromSqlServerConfig(serverConfig *SqlServerConfig) *entities.ServerConfig {

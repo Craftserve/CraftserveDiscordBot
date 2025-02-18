@@ -2,3 +2,5 @@
 csrvbot.log
 config.json
 csrvbot
+backup
+.DS_Store
