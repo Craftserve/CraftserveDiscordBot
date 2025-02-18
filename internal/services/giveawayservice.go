@@ -666,6 +666,10 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 			Embed:      embed,
 			Components: discord.ConstructJoinComponents(false),
 		})
+		if err != nil {
+			log.WithError(err).Error("CreateJoinableGiveaway#session.ChannelMessageSendComplex")
+			return
+		}
 
 		err = h.JoinableGiveawayRepo.InsertGiveaway(ctx, guild.ID, message.ID, level)
 		if err != nil {
