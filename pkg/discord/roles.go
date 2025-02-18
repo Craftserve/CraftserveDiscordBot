@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"csrvbot/pkg/logger"
+	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"strconv"
 )
@@ -101,7 +102,7 @@ func GetRoleForLevel(ctx context.Context, session *discordgo.Session, guildId st
 		}
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("role for level %d not found", level)
 }
 
 func ValidateLevels(ctx context.Context, session *discordgo.Session, guildId string, levels []int) (bool, error) {

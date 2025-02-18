@@ -1,0 +1,26 @@
+name: Publish image
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for image'
+        required: true
+        default: 'stable'
+
+env:
+  TAG: ${{ github.event.inputs.tag }}
+
+jobs:
+  publish:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Publish image
+        run: make publish REGISTRY=${{ secrets.REGISTRY }} TAG=${{ env.TAG }}
