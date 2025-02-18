@@ -15,36 +15,34 @@ import (
 )
 
 type InteractionCreateListener struct {
-	GiveawayCommand      commands.GiveawayCommand
-	ThxCommand           commands.ThxCommand
-	ThxmeCommand         commands.ThxmeCommand
-	CsrvbotCommand       commands.CsrvbotCommand
-	DocCommand           commands.DocCommand
-	ResendCommand        commands.ResendCommand
-	GiveawayHours        string
-	CraftserveUrl        string
-	GiveawayRepo         entities.GiveawayRepo
-	MessageGiveawayRepo  entities.MessageGiveawayRepo
-	ServerRepo           entities.ServerRepo
-	HelperService        services.HelperService
-	JoinableGiveawayRepo entities.JoinableGiveawayRepo
+	GiveawayCommand commands.GiveawayCommand
+	ThxCommand      commands.ThxCommand
+	ThxmeCommand    commands.ThxmeCommand
+	CsrvbotCommand  commands.CsrvbotCommand
+	DocCommand      commands.DocCommand
+	ResendCommand   commands.ResendCommand
+	GiveawayHours   string
+	CraftserveUrl   string
+	GiveawaysRepo   entities.GiveawaysRepo
+	//MessageGiveawayRepo  entities.MessageGiveawayRepo
+	ServerRepo    entities.ServerRepo
+	HelperService services.HelperService
+	//JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawayRepo entities.GiveawayRepo, messageGiveawayRepo entities.MessageGiveawayRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, joinableGiveawayRepo entities.JoinableGiveawayRepo) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawaysRepo entities.GiveawaysRepo, serverRepo entities.ServerRepo, helperService *services.HelperService) InteractionCreateListener {
 	return InteractionCreateListener{
-		GiveawayCommand:      giveawayCommand,
-		ThxCommand:           thxCommand,
-		ThxmeCommand:         thxmeCommand,
-		CsrvbotCommand:       csrvbotCommand,
-		DocCommand:           docCommand,
-		ResendCommand:        resendCommand,
-		GiveawayHours:        giveawayHours,
-		CraftserveUrl:        craftserveUrl,
-		GiveawayRepo:         giveawayRepo,
-		MessageGiveawayRepo:  messageGiveawayRepo,
-		ServerRepo:           serverRepo,
-		HelperService:        *helperService,
-		JoinableGiveawayRepo: joinableGiveawayRepo,
+		GiveawayCommand: giveawayCommand,
+		ThxCommand:      thxCommand,
+		ThxmeCommand:    thxmeCommand,
+		CsrvbotCommand:  csrvbotCommand,
+		DocCommand:      docCommand,
+		ResendCommand:   resendCommand,
+		GiveawayHours:   giveawayHours,
+		CraftserveUrl:   craftserveUrl,
+		GiveawaysRepo:   giveawaysRepo,
+		ServerRepo:      serverRepo,
+		HelperService:   *helperService,
 	}
 }
 
@@ -102,9 +100,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 	switch i.MessageComponentData().CustomID {
 	case "thxwinnercode":
 		log.Debug("User clicked thxwinnercode button")
-		hasWon, err := h.GiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		hasWon, err := h.GiveawaysRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#GiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.HasWonGiveawayByMessageId: %v", err)
 			return
 		}
 		if !hasWon {
@@ -114,9 +112,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		log.Debug("User has won the giveaway, getting code...")
-		code, err := h.GiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID)
+		code, err := h.GiveawaysRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#GiveawayRepo.GetCodeForInfoMessage: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.GetCodeForInfoMessage: %v", err)
 			return
 		}
 
@@ -133,9 +131,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 	case "msgwinnercode":
 		log.Debug("User clicked msgwinnercode button")
-		hasWon, err := h.MessageGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		hasWon, err := h.GiveawaysRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#MessageGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.HasWonGiveawayByMessageId: %v", err)
 			return
 		}
 		if !hasWon {
@@ -145,9 +143,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		log.Debug("User has won the giveaway, getting code...")
-		codes, err := h.MessageGiveawayRepo.GetCodesForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
+		codes, err := h.GiveawaysRepo.GetCodesForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#MessageGiveawayRepo.GetCodesForInfoMessage: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.GetCodesForInfoMessage: %v", err)
 			return
 		}
 
@@ -167,9 +165,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 	case "giveawayjoin":
 		log.Debug("User clicked giveawayjoin button")
 
-		giveaway, err := h.JoinableGiveawayRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
+		giveaway, err := h.GiveawaysRepo.GetGiveawayByMessageId(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.GetGiveawayByMessageId: %v", err)
 			return
 		}
 
@@ -179,9 +177,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			return
 		}
 
-		participants, err := h.JoinableGiveawayRepo.GetParticipantsForGiveaway(ctx, giveaway.Id)
+		participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, giveaway.Id, nil)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetParticipantsForGiveaway: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.GetParticipantsForGiveaway: %v", err)
 			return
 		}
 
@@ -207,9 +205,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			}
 		}
 
-		err = h.JoinableGiveawayRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, i.Member.User.ID, i.Member.User.Username)
+		err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, i.Member.GuildID, i.Member.User.ID, i.Member.User.Username, &i.Message.ID, nil)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.InsertParticipant: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.InsertParticipant: %v", err)
 			return
 		}
 
@@ -219,9 +217,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		// Edit embed to count new participant
 		log.Debug("Editing message to count new participant...")
 
-		participantsCount, err := h.JoinableGiveawayRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
+		participantsCount, err := h.GiveawaysRepo.CountParticipantsForGiveaway(ctx, giveaway.Id)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.CountParticipantsForGiveaway: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.CountParticipantsForGiveaway: %v", err)
 			return
 		}
 
@@ -245,9 +243,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 	case "joinablewinnercode":
 		log.Debug("User clicked joinablewinnercode button")
 
-		hasWon, err := h.JoinableGiveawayRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
+		hasWon, err := h.GiveawaysRepo.HasWonGiveawayByMessageId(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.HasWonGiveawayByMessageId: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.HasWonGiveawayByMessageId: %v", err)
 			return
 		}
 
@@ -258,9 +256,9 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 		}
 
 		log.Debug("User has won the giveaway, getting code...")
-		code, err := h.JoinableGiveawayRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
+		code, err := h.GiveawaysRepo.GetCodeForInfoMessage(ctx, i.Message.ID, i.Member.User.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleMessageComponents#JoinableGiveawayRepo.GetCodesForInfoMessage: %v", err)
+			log.WithError(err).Errorf("handleMessageComponents#GiveawaysRepo.GetCodesForInfoMessage: %v", err)
 			return
 		}
 
@@ -285,14 +283,14 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		return
 	}
 	log = log.WithMessage(i.Message.ID)
-	isThxMessage, err := h.GiveawayRepo.IsThxMessage(ctx, i.Message.ID)
+	isThxMessage, err := h.GiveawaysRepo.IsThxMessage(ctx, i.Message.ID)
 	if err != nil {
-		log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.IsThxMessage: %v", err)
+		log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.IsThxMessage: %v", err)
 		return
 	}
-	isThxmeMessage, err := h.GiveawayRepo.IsThxmeMessage(ctx, i.Message.ID)
+	isThxmeMessage, err := h.GiveawaysRepo.IsThxmeMessage(ctx, i.Message.ID)
 	if err != nil {
-		log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.IsThxmeMessage: %v", err)
+		log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.IsThxmeMessage: %v", err)
 		return
 	}
 
@@ -320,15 +318,15 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			return
 		}
 
-		participant, err := h.GiveawayRepo.GetParticipant(ctx, i.Message.ID)
+		participant, err := h.GiveawaysRepo.GetParticipant(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipant: %v", err)
+			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetParticipant: %v", err)
 			return
 		}
 
-		giveaway, err := h.GiveawayRepo.GetGiveawayById(ctx, participant.GiveawayId)
+		giveaway, err := h.GiveawaysRepo.GetGiveawayById(ctx, participant.GiveawayId)
 		if err != nil {
-			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetGiveawayById: %v", err)
+			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetGiveawayById: %v", err)
 			return
 		}
 
@@ -338,30 +336,36 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			return
 		}
 
-		thxNotification, notificationErr := h.GiveawayRepo.GetThxNotification(ctx, i.Message.ID)
+		thxNotification, notificationErr := h.GiveawaysRepo.GetThxNotification(ctx, i.Message.ID)
 		if notificationErr != nil && !errors.Is(notificationErr, sql.ErrNoRows) {
-			log.WithError(notificationErr).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetThxNotification: %v", notificationErr)
+			log.WithError(notificationErr).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetThxNotification: %v", notificationErr)
 			return
 		}
 
 		switch componentId {
 		case "accept":
 			log.Debug("User clicked accept button, updating participant...")
-			err = h.GiveawayRepo.UpdateParticipant(ctx, &participant, member.User.ID, member.User.Username, true)
+			err = h.GiveawaysRepo.UpdateParticipant(ctx, participant, member.User.ID, member.User.Username, true)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipant: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.UpdateParticipant: %v", err)
 				return
 			}
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Udział użytkownika został potwierdzony!")
 			log.Infof("%s accepted %s participation in giveaway %d", member.User.Username, participant.UserName, participant.GiveawayId)
 
-			participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, participant.GiveawayId)
+			accepted := true
+			participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, participant.GiveawayId, &accepted)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipantNamesForGiveaway: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetParticipantNamesForGiveaway: %v", err)
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
+			var participantsNames []string
+			for _, p := range participants {
+				participantsNames = append(participantsNames, p.UserName)
+			}
+
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -377,7 +381,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				}
 
 				log.Debug("Inserting thx notification...")
-				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
+				err = h.GiveawaysRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")
 					return
@@ -394,21 +398,27 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			h.HelperService.CheckHelper(ctx, s, i.GuildID, participant.UserId)
 		case "reject":
 			log.Debug("User clicked reject button, updating participant...")
-			err := h.GiveawayRepo.UpdateParticipant(ctx, &participant, member.User.ID, member.User.Username, false)
+			err := h.GiveawaysRepo.UpdateParticipant(ctx, participant, member.User.ID, member.User.Username, false)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipant: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.UpdateParticipant: %v", err)
 				return
 			}
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Udział użytkownika został odrzucony!")
 			log.Infof("%s rejected %s participation in giveaway %d", member.User.Username, participant.UserName, participant.GiveawayId)
 
-			participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, participant.GiveawayId)
+			accepted := true
+			participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, participant.GiveawayId, &accepted)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipantNamesForGiveaway: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetParticipantNamesForGiveaway: %v", err)
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
+			var participantsNames []string
+			for _, p := range participants {
+				participantsNames = append(participantsNames, p.UserName)
+			}
+
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -424,7 +434,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				}
 
 				log.Debug("Inserting thx notification...")
-				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
+				err = h.GiveawaysRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")
 					return
@@ -443,9 +453,9 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 
 	} else if isThxmeMessage {
 		log.Debug("Message is a thxme message")
-		candidate, err := h.GiveawayRepo.GetParticipantCandidate(ctx, i.Message.ID)
+		candidate, err := h.GiveawaysRepo.GetParticipantCandidate(ctx, i.Message.ID)
 		if err != nil {
-			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipantCandidate: %v", err)
+			log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetParticipantCandidate: %v", err)
 			return
 		}
 
@@ -458,26 +468,32 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 		switch componentId {
 		case "accept":
 			log.Debug("User clicked accept button, updating participant candidate...")
-			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, true)
+			err := h.GiveawaysRepo.UpdateParticipantCandidate(ctx, &candidate, true)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipantCandidate: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.UpdateParticipantCandidate: %v", err)
 				return
 			}
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Prośba o podziękowanie zaakceptowana!")
 			log.Infof("(%s) %s accepted %s request for thx", i.GuildID, member.User.Username, candidate.CandidateName)
 
-			giveaway, err := h.GiveawayRepo.GetGiveawayForGuild(ctx, i.GuildID)
+			giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, i.GuildID, entities.ThxGiveawayType)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetGiveawayForGuild: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetGiveawayForGuild: %v", err)
 				return
 			}
-			participants, err := h.GiveawayRepo.GetParticipantNamesForGiveaway(ctx, giveaway.Id)
+			accepted := true
+			participants, err := h.GiveawaysRepo.GetParticipantsForGiveaway(ctx, giveaway.Id, &accepted)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.GetParticipantNamesForGiveaway: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.GetParticipantNamesForGiveaway: %v", err)
 				return
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participants, h.GiveawayHours, candidate.CandidateId, "", "wait")
+			var participantsNames []string
+			for _, p := range participants {
+				participantsNames = append(participantsNames, p.UserName)
+			}
+
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, candidate.CandidateId, "", "wait")
 
 			content := "Prośba o podziękowanie zaakceptowana przez: " + member.User.Mention()
 			_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
@@ -498,9 +514,17 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 
 			log.Debug("Inserting participant...")
-			err = h.GiveawayRepo.InsertParticipant(ctx, giveaway.Id, guild.ID, guild.Name, candidate.CandidateId, candidate.CandidateName, i.ChannelID, i.Message.ID)
+
+			memberLevel, err := discord.GetMemberLevel(ctx, s, member, i.GuildID)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.InsertParticipant: %v", err)
+				log.WithError(err).Error("Could not get member level")
+				return
+			}
+
+			//err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, guild.ID, guild.Name, candidate.CandidateId, candidate.CandidateName, i.ChannelID, i.Message.ID)
+			err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, memberLevel, guild.ID, candidate.CandidateId, candidate.CandidateName, &i.Message.ID, &i.ChannelID)
+			if err != nil {
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.InsertParticipant: %v", err)
 				str := "Coś poszło nie tak przy dodawaniu podziękowania :("
 				_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 					Content: &str,
@@ -513,7 +537,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 
 			log.Infof("%s thanked %s", member.User.Username, candidate.CandidateName)
 
-			thxNotification, err := h.GiveawayRepo.GetThxNotification(ctx, i.Message.ID)
+			thxNotification, err := h.GiveawaysRepo.GetThxNotification(ctx, i.Message.ID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				log.WithError(err).Error("Could not get thx notification for message %s", i.Message.ID)
 				return
@@ -527,7 +551,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				}
 
 				log.Debug("Inserting thx notification...")
-				err = h.GiveawayRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
+				err = h.GiveawaysRepo.InsertThxNotification(ctx, i.Message.ID, notificationMessageId)
 				if err != nil {
 					log.WithError(err).Error("Could not insert thx notification")
 					return
@@ -541,9 +565,9 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 			}
 		case "reject":
 			log.Debug("User clicked reject button, updating participant candidate...")
-			err := h.GiveawayRepo.UpdateParticipantCandidate(ctx, &candidate, false)
+			err := h.GiveawaysRepo.UpdateParticipantCandidate(ctx, &candidate, false)
 			if err != nil {
-				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawayRepo.UpdateParticipantCandidate: %v", err)
+				log.WithError(err).Errorf("handleAcceptDeclineButtons#h.GiveawaysRepo.UpdateParticipantCandidate: %v", err)
 				return
 			}
 

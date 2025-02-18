@@ -8,12 +8,12 @@ import (
 )
 
 type MessageCreateListener struct {
-	MessageGiveawayRepo entities.MessageGiveawayRepo
+	GiveawaysRepo entities.GiveawaysRepo
 }
 
-func NewMessageCreateListener(messageGiveawayRepo entities.MessageGiveawayRepo) MessageCreateListener {
+func NewMessageCreateListener(giveawaysRepo entities.GiveawaysRepo) MessageCreateListener {
 	return MessageCreateListener{
-		MessageGiveawayRepo: messageGiveawayRepo,
+		GiveawaysRepo: giveawaysRepo,
 	}
 }
 
@@ -25,7 +25,7 @@ func (h MessageCreateListener) Handle(s *discordgo.Session, m *discordgo.Message
 		return
 	}
 
-	err := h.MessageGiveawayRepo.UpdateUserDailyMessageCount(ctx, m.Author.ID, m.GuildID)
+	err := h.GiveawaysRepo.UpdateUserDailyMessageCount(ctx, m.Author.ID, m.GuildID)
 	if err != nil {
 		log.WithError(err).Error("Could not update user daily message count")
 		return
