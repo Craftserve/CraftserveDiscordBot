@@ -89,7 +89,7 @@ type VoucherAction struct {
 	WalletTx map[monies.CurrencyCode]monies.Money `json:"wallet_tx,omitempty"`
 }
 
-type PublicVoucher struct {
+type VoucherResponse struct {
 	Id        string          `json:"id"`
 	CreatedAt time.Time       `json:"created_at"`
 	Expires   *time.Time      `json:"expires"`

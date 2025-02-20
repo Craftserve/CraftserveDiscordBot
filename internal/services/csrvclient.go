@@ -70,7 +70,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	var voucher entities.PublicVoucher
+	var voucher entities.VoucherResponse
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
