@@ -1,5 +1,7 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/Craftserve/monies v0.0.0-20230628121509-708cba760847 h1:i479fgAv0w5oDYpZp5dsGohBgINsTAh/k6Y42Hz3kqQ=
+github.com/Craftserve/monies v0.0.0-20230628121509-708cba760847/go.mod h1:ApXRhDBi6+33bhFlxbS79aZyDv4rOJwuhk3YbSfbxSw=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Rekseto/gorp v2.2.1-0.20221012142044-f062c65fa536+incompatible h1:uDoM2Co4+ifjYOdAAbINZSC2kQiVhCwiZmlrLp3YENk=
 github.com/Rekseto/gorp v2.2.1-0.20221012142044-f062c65fa536+incompatible/go.mod h1:/vlut7VxMWRnVV+w7gUHNBfluaHAqwQpTMy8xHpWB4I=
