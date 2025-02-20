@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"csrvbot/domain/entities"
+	"csrvbot/dtos"
 	"csrvbot/pkg/logger"
 	"encoding/json"
 	"fmt"
@@ -35,7 +36,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	prefix, group := "discord", "discord-giveaway"
 	expires := time.Now().Add(365 * 24 * time.Hour)
 	uses := 1
-	payload := entities.GenerateVoucherPayload{
+	payload := dtos.GenerateVoucherPayload{
 		Length:  16,
 		Charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 		Prefix:  &prefix,
