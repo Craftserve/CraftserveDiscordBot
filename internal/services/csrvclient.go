@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"csrvbot/domain/entities"
+	"csrvbot/domain/values"
 	"csrvbot/dtos"
 	"csrvbot/pkg/logger"
 	"encoding/json"
@@ -34,11 +35,11 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	}
 
 	prefix, group := "discord", "discord-giveaway"
-	expires := time.Now().Add(365 * 24 * time.Hour)
+	expires := time.Now().Add(values.VoucherExpiration)
 	uses := 1
 	payload := dtos.GenerateVoucherPayload{
-		Length:  16,
-		Charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		Length:  values.VoucherLength,
+		Charset: values.VoucherCharset,
 		Prefix:  &prefix,
 		Expires: &expires,
 		GroupId: &group,
@@ -47,7 +48,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		Actions: []entities.VoucherAction{
 			{
 				WalletTx: map[monies.CurrencyCode]monies.Money{
-					monies.PLN: monies.MustNew(500, monies.PLN),
+					monies.PLN: monies.MustNew(values.VoucherValuePLN, monies.PLN), // 5 PLN
 				},
 			},
 		},
@@ -59,7 +60,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("GetCSRVCode json.NewEncoder failed: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/admin/voucher/generate", c.CraftserveUrl), bodyPayload)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/admin/voucher/generate", c.CraftserveUrl), bodyPayload)
 	if err != nil {
 		return "", err
 	}
@@ -70,19 +71,26 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.WithError(cerr).Error("GetCSRVCode failed to close response body")
+		}
+	}()
+
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("GetCSRVCode failed with status: %d", resp.StatusCode)
+	}
 
 	var voucher entities.Voucher
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("GetCSRVCode io.ReadAll failed: %w", err)
 	}
+
 	err = json.Unmarshal(bodyBytes, &voucher)
 	if err != nil {
-		return "", fmt.Errorf("getCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
+		return "", fmt.Errorf("GetCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
 	}
-	err = resp.Body.Close()
-	if err != nil {
-		log.WithError(err).Error("getCSRVCode resp.Body.Close()")
-	}
+
 	return voucher.Id, nil
 }

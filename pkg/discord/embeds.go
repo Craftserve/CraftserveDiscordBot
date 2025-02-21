@@ -9,6 +9,7 @@ import (
 
 const (
 	ICON_URL = "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp"
+	COLOR    = 0x234d20
 )
 
 func ConstructInfoEmbed(url string, participants []string, giveawayHours string) *discordgo.MessageEmbed {
@@ -25,7 +26,7 @@ func ConstructInfoEmbed(url string, participants []string, giveawayHours string)
 			IconURL: ICON_URL,
 		},
 		Description: info,
-		Color:       0x234d20,
+		Color:       COLOR,
 		Timestamp:   time.Now().Format(time.RFC3339),
 	}
 	return embed
@@ -67,7 +68,7 @@ func ConstructThxNotificationEmbed(url, guildId, thxChannelId, thxMessageId, par
 			Name:    "Nowe podziękowanie",
 			IconURL: ICON_URL,
 		},
-		Color: 0x234d20,
+		Color: COLOR,
 	}
 	embed.Fields = []*discordgo.MessageEmbedField{}
 	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Dla", Value: "<@" + participantId + ">", Inline: true})
@@ -103,7 +104,7 @@ func ConstructWinnerEmbed(url, code string) *discordgo.MessageEmbed {
 			IconURL: ICON_URL,
 		},
 		Description: "Gratulacje! W loterii wygrałeś darmowy kod na doładowanie portfela na Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kupon*. Kod jest ważny około rok.",
-		Color:       0x234d20,
+		Color:       COLOR,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name: "KOD", Value: code,
@@ -132,7 +133,7 @@ func ConstructMessageWinnerEmbed(url string, codes []string) *discordgo.MessageE
 			Name:    author,
 			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 		Fields: []*discordgo.MessageEmbedField{
 			{
@@ -150,7 +151,7 @@ func ConstructChannelWinnerEmbed(url, username string) *discordgo.MessageEmbed {
 			Name:    "Wyniki giveaway!",
 			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: username + " wygrał kod. Gratulacje!",
 	}
 	return embed
@@ -170,7 +171,7 @@ func ConstructChannelMessageWinnerEmbed(url string, usernames []string) *discord
 			Name:    "Wyniki giveaway!",
 			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 	return embed
@@ -184,7 +185,7 @@ func ConstructResendEmbed(url string, codes []string) *discordgo.MessageEmbed {
 			IconURL: ICON_URL,
 		},
 		Description: strings.Join(codes, "\n"),
-		Color:       0x234d20,
+		Color:       COLOR,
 		Timestamp:   time.Now().Format(time.RFC3339),
 	}
 	return embed
@@ -212,7 +213,7 @@ func ConstructJoinableGiveawayEmbed(url string, participantsCount int, levelRole
 			Name:    title,
 			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 }
@@ -237,7 +238,7 @@ func ConstructJoinableWinnersEmbed(url string, participantsIds []string, levelRo
 			Name:    title,
 			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 }
