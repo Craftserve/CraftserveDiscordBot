@@ -20,10 +20,12 @@ type CsrvClient struct {
 	Secret        string
 	Environment   string
 	CraftserveUrl string
+	Value         int
+	Expiration    int
 }
 
-func NewCsrvClient(secret, environment, craftserveUrl string) *CsrvClient {
-	return &CsrvClient{Secret: secret, Environment: environment, CraftserveUrl: craftserveUrl}
+func NewCsrvClient(secret, environment, craftserveUrl string, value, expiration int) *CsrvClient {
+	return &CsrvClient{Secret: secret, Environment: environment, CraftserveUrl: craftserveUrl, Value: value, Expiration: expiration}
 }
 
 func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
@@ -35,7 +37,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 	}
 
 	prefix, group := "discord", "discord-giveaway"
-	expires := time.Now().Add(values.VoucherExpiration)
+	expires := time.Now().Add(24 * time.Duration(c.Expiration) * time.Hour)
 	uses := 1
 	payload := dtos.GenerateVoucherPayload{
 		Length:  values.VoucherLength,
@@ -48,7 +50,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		Actions: []entities.VoucherAction{
 			{
 				WalletTx: map[monies.CurrencyCode]monies.Money{
-					monies.PLN: monies.MustNew(values.VoucherValuePLN, monies.PLN), // 5 PLN
+					monies.PLN: monies.MustNew(int64(c.Value), monies.PLN), // 5 PLN
 				},
 			},
 		},

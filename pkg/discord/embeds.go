@@ -12,9 +12,9 @@ const (
 	COLOR    = 0x234d20
 )
 
-func ConstructInfoEmbed(url string, participants []string, giveawayHours string) *discordgo.MessageEmbed {
+func ConstructInfoEmbed(url string, participants []string, giveawayHours string, value int) *discordgo.MessageEmbed {
 	info := "**Ten bot organizuje giveaway kodów na doładowanie portfela Twojego serwera.**\n" +
-		"**Każdy kod doładowuje 5 PLN do portfela.**\n" +
+		fmt.Sprintf("**Każdy kod doładowuje %d PLN do portfela.**\n", value/100) +
 		"Aby wziąć udział pomagaj innym użytkownikom. Jeżeli komuś pomożesz, to poproś tą osobę aby użyła komendy </thx:1107007500659728405> lub sam użyj komendy </thxme:1107007504308769020> - w ten sposób dostaniesz się do loterii. To jest nasza metoda na rozruszanie tego Discorda, tak, aby każdy mógł liczyć na pomoc. Każde podziękowanie to jeden los, więc warto pomagać!\n\n" +
 		fmt.Sprintf("**Sponsorem tego bota jest %s - hosting serwerów Minecraft.**\n\n", url) +
 		"Pomoc musi odbywać się na tym serwerze na tekstowych kanałach publicznych.\n\n" +
@@ -32,8 +32,8 @@ func ConstructInfoEmbed(url string, participants []string, giveawayHours string)
 	return embed
 }
 
-func ConstructThxEmbed(url string, participants []string, giveawayHours, participantId, confirmerId, state string) *discordgo.MessageEmbed {
-	embed := ConstructInfoEmbed(url, participants, giveawayHours)
+func ConstructThxEmbed(url string, participants []string, giveawayHours, participantId, confirmerId, state string, voucherValue int) *discordgo.MessageEmbed {
+	embed := ConstructInfoEmbed(url, participants, giveawayHours, voucherValue)
 	embed.Fields = []*discordgo.MessageEmbedField{}
 	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Dodany", Value: "<@" + participantId + ">", Inline: true})
 

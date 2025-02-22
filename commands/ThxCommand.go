@@ -16,12 +16,13 @@ type ThxCommand struct {
 	DMPermission  bool
 	GiveawayHours string
 	CraftserveUrl string
+	VoucherValue  int
 	GiveawaysRepo entities.GiveawaysRepo
 	UserRepo      entities.UserRepo
 	ServerRepo    entities.ServerRepo
 }
 
-func NewThxCommand(giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string) ThxCommand {
+func NewThxCommand(giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, serverRepo entities.ServerRepo, giveawayHours, craftserveUrl string, voucherValue int) ThxCommand {
 	return ThxCommand{
 		Name:          "thx",
 		Description:   "Podziękowanie innemu użytkownikowi",
@@ -31,6 +32,7 @@ func NewThxCommand(giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserR
 		ServerRepo:    serverRepo,
 		GiveawayHours: giveawayHours,
 		CraftserveUrl: craftserveUrl,
+		VoucherValue:  voucherValue,
 	}
 }
 
@@ -133,7 +135,7 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		participantsNames = append(participantsNames, participant.UserName)
 	}
 
-	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, selectedUser.ID, "", "wait")
+	embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, selectedUser.ID, "", "wait", h.VoucherValue)
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
