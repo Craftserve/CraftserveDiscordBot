@@ -7,9 +7,14 @@ import (
 	"time"
 )
 
-func ConstructInfoEmbed(url string, participants []string, giveawayHours string) *discordgo.MessageEmbed {
-	info := "**Ten bot organizuje giveaway kodów na serwery Diamond.**\n" +
-		"**Każdy kod przedłuża serwer o 7 dni.**\n" +
+const (
+	ICON_URL = "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp"
+	COLOR    = 0x234d20
+)
+
+func ConstructInfoEmbed(url string, participants []string, giveawayHours string, value int) *discordgo.MessageEmbed {
+	info := "**Ten bot organizuje giveaway kodów na doładowanie portfela Twojego serwera.**\n" +
+		fmt.Sprintf("**Każdy kod doładowuje %d PLN do portfela.**\n", value/100) +
 		"Aby wziąć udział pomagaj innym użytkownikom. Jeżeli komuś pomożesz, to poproś tą osobę aby użyła komendy </thx:1107007500659728405> lub sam użyj komendy </thxme:1107007504308769020> - w ten sposób dostaniesz się do loterii. To jest nasza metoda na rozruszanie tego Discorda, tak, aby każdy mógł liczyć na pomoc. Każde podziękowanie to jeden los, więc warto pomagać!\n\n" +
 		fmt.Sprintf("**Sponsorem tego bota jest %s - hosting serwerów Minecraft.**\n\n", url) +
 		"Pomoc musi odbywać się na tym serwerze na tekstowych kanałach publicznych.\n\n" +
@@ -18,17 +23,17 @@ func ConstructInfoEmbed(url string, participants []string, giveawayHours string)
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Informacje o Giveawayu",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
 		Description: info,
-		Color:       0x234d20,
+		Color:       COLOR,
 		Timestamp:   time.Now().Format(time.RFC3339),
 	}
 	return embed
 }
 
-func ConstructThxEmbed(url string, participants []string, giveawayHours, participantId, confirmerId, state string) *discordgo.MessageEmbed {
-	embed := ConstructInfoEmbed(url, participants, giveawayHours)
+func ConstructThxEmbed(url string, participants []string, giveawayHours, participantId, confirmerId, state string, voucherValue int) *discordgo.MessageEmbed {
+	embed := ConstructInfoEmbed(url, participants, giveawayHours, voucherValue)
 	embed.Fields = []*discordgo.MessageEmbedField{}
 	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Dodany", Value: "<@" + participantId + ">", Inline: true})
 
@@ -61,9 +66,9 @@ func ConstructThxNotificationEmbed(url, guildId, thxChannelId, thxMessageId, par
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Nowe podziękowanie",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color: 0x234d20,
+		Color: COLOR,
 	}
 	embed.Fields = []*discordgo.MessageEmbedField{}
 	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{Name: "Dla", Value: "<@" + participantId + ">", Inline: true})
@@ -95,11 +100,11 @@ func ConstructWinnerEmbed(url, code string) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
-			Name:    "Wygrałeś kod na serwer diamond!",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			Name:    "Wygrałeś kod na doładowanie portfela na Craftserve!",
+			IconURL: ICON_URL,
 		},
-		Description: "Gratulacje! W loterii wygrałeś darmowy kod na serwer w Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok.",
-		Color:       0x234d20,
+		Description: "Gratulacje! W loterii wygrałeś darmowy kod na doładowanie portfela na Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kupon*. Kod jest ważny około rok.",
+		Color:       COLOR,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name: "KOD", Value: code,
@@ -114,21 +119,21 @@ func ConstructMessageWinnerEmbed(url string, codes []string) *discordgo.MessageE
 	var author string
 	var name string
 	if len(codes) > 1 {
-		description = "Gratulacje! W loterii wygrałeś darmowe kody na serwer w Craftserve! Możesz je użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kody są ważne około rok."
-		author = "Wygrałeś kody na serwer diamond!"
+		description = "Gratulacje! W loterii wygrałeś darmowe kody na doładowanie portfela na Craftserve! Możesz je użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kupon*. Kody są ważne około rok."
+		author = "Wygrałeś kody na doładowanie portfela na Craftserve!"
 		name = "KODY"
 	} else {
-		description = "Gratulacje! W loterii wygrałeś darmowy kod na serwer w Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok."
-		author = "Wygrałeś kod na serwer diamond!"
+		description = "Gratulacje! W loterii wygrałeś darmowy kod na doładowanie portfela na Craftserve! Możesz go użyć w zakładce *Płatności* pod przyciskiem *Zrealizuj kod podarunkowy*. Kod jest ważny około rok."
+		author = "Wygrałeś kod na doładowanie serwera na Craftserve!"
 		name = "KOD"
 	}
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    author,
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 		Fields: []*discordgo.MessageEmbedField{
 			{
@@ -144,9 +149,9 @@ func ConstructChannelWinnerEmbed(url, username string) *discordgo.MessageEmbed {
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Wyniki giveaway!",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: username + " wygrał kod. Gratulacje!",
 	}
 	return embed
@@ -155,18 +160,18 @@ func ConstructChannelWinnerEmbed(url, username string) *discordgo.MessageEmbed {
 func ConstructChannelMessageWinnerEmbed(url string, usernames []string) *discordgo.MessageEmbed {
 	var description string
 	if len(usernames) > 1 {
-		description = "W loterii za aktywność wygraliście kody na serwer w Craftserve!"
+		description = "W loterii za aktywność wygraliście kody na doładowanie portfela na Craftserve!"
 		description += "\n\n" + strings.Join(usernames, "\n")
 	} else {
-		description = "W loterii za aktywność " + usernames[0] + " wygrał kod na serwer w Craftserve. Gratulacje!"
+		description = "W loterii za aktywność " + usernames[0] + " wygrał kod na doładowanie portfela na Craftserve. Gratulacje!"
 	}
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Wyniki giveaway!",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 	return embed
@@ -177,10 +182,10 @@ func ConstructResendEmbed(url string, codes []string) *discordgo.MessageEmbed {
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    "Twoje ostatnie wygrane kody",
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
 		Description: strings.Join(codes, "\n"),
-		Color:       0x234d20,
+		Color:       COLOR,
 		Timestamp:   time.Now().Format(time.RFC3339),
 	}
 	return embed
@@ -190,13 +195,13 @@ func ConstructJoinableGiveawayEmbed(url string, participantsCount int, levelRole
 	var title, description string
 	if levelRoleId != nil {
 		title = "Dołącz do poziomowego giveaway już teraz!"
-		description = fmt.Sprintf("Właśnie startuje poziomowy giveaway, do którego mogą dołączyć użytkownicy z rolą **<@&%s>** lub wyższą! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!", *levelRoleId)
+		description = fmt.Sprintf("Właśnie startuje poziomowy giveaway, do którego mogą dołączyć użytkownicy z rolą **<@&%s>** lub wyższą! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na doładowanie portfela na Craftserve! Powodzenia!", *levelRoleId)
 		if participantsCount > 0 {
 			description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
 		}
 	} else {
 		title = "Dołącz do giveaway już teraz!"
-		description = "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na serwer w Craftserve! Powodzenia!"
+		description = "Właśnie startuje bezwarunkowy giveaway, do którego może dołączyć totalnie każdy! Wystarczy, że klikniesz w przycisk poniżej i już jesteś w grze o darmowy kod na doładowanie portfela na Craftserve! Powodzenia!"
 		if participantsCount > 0 {
 			description += fmt.Sprintf("\n\n**Liczba uczestników:** %d", participantsCount)
 		}
@@ -206,9 +211,9 @@ func ConstructJoinableGiveawayEmbed(url string, participantsCount int, levelRole
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    title,
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 }
@@ -231,9 +236,9 @@ func ConstructJoinableWinnersEmbed(url string, participantsIds []string, levelRo
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     url,
 			Name:    title,
-			IconURL: "https://cdn.discordapp.com/avatars/524308413719642118/c2a17b4479bfcc89d2b7e64e6ae15ebe.webp",
+			IconURL: ICON_URL,
 		},
-		Color:       0x234d20,
+		Color:       COLOR,
 		Description: description,
 	}
 }

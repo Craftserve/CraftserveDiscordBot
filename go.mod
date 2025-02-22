@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/Craftserve/monies v0.0.0-20230628121509-708cba760847 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/lib/pq v1.7.1 // indirect

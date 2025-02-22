@@ -27,10 +27,11 @@ type InteractionCreateListener struct {
 	//MessageGiveawayRepo  entities.MessageGiveawayRepo
 	ServerRepo    entities.ServerRepo
 	HelperService services.HelperService
+	VoucherValue  int
 	//JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawaysRepo entities.GiveawaysRepo, serverRepo entities.ServerRepo, helperService *services.HelperService) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawaysRepo entities.GiveawaysRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, voucherValue int) InteractionCreateListener {
 	return InteractionCreateListener{
 		GiveawayCommand: giveawayCommand,
 		ThxCommand:      thxCommand,
@@ -43,6 +44,7 @@ func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxC
 		GiveawaysRepo:   giveawaysRepo,
 		ServerRepo:      serverRepo,
 		HelperService:   *helperService,
+		VoucherValue:    voucherValue,
 	}
 }
 
@@ -365,7 +367,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				participantsNames = append(participantsNames, p.UserName)
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "confirm")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "confirm", h.VoucherValue)
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -418,7 +420,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				participantsNames = append(participantsNames, p.UserName)
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "reject")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, participant.UserId, member.User.ID, "reject", h.VoucherValue)
 
 			_, err = s.ChannelMessageEditEmbed(i.ChannelID, i.Message.ID, embed)
 			if err != nil {
@@ -493,7 +495,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 				participantsNames = append(participantsNames, p.UserName)
 			}
 
-			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, candidate.CandidateId, "", "wait")
+			embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, candidate.CandidateId, "", "wait", h.VoucherValue)
 
 			content := "Prośba o podziękowanie zaakceptowana przez: " + member.User.Mention()
 			_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{

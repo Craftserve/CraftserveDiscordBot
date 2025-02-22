@@ -15,9 +15,10 @@ type GiveawayCommand struct {
 	GiveawayHours string
 	GiveawaysRepo entities.GiveawaysRepo
 	CraftserveUrl string
+	VoucherValue  int
 }
 
-func NewGiveawayCommand(giveawaysRepo entities.GiveawaysRepo, giveawayHours, craftserveUrl string) GiveawayCommand {
+func NewGiveawayCommand(giveawaysRepo entities.GiveawaysRepo, giveawayHours, craftserveUrl string, voucherValue int) GiveawayCommand {
 	return GiveawayCommand{
 		Name:          "giveaway",
 		Description:   "Wyświetla zasady giveawaya",
@@ -25,6 +26,7 @@ func NewGiveawayCommand(giveawaysRepo entities.GiveawaysRepo, giveawayHours, cra
 		GiveawaysRepo: giveawaysRepo,
 		GiveawayHours: giveawayHours,
 		CraftserveUrl: craftserveUrl,
+		VoucherValue:  voucherValue,
 	}
 }
 
@@ -64,7 +66,7 @@ func (h GiveawayCommand) Handle(ctx context.Context, s *discordgo.Session, i *di
 		Data: &discordgo.InteractionResponseData{
 			Flags: discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				discord.ConstructInfoEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours),
+				discord.ConstructInfoEmbed(h.CraftserveUrl, participantsNames, h.GiveawayHours, h.VoucherValue),
 			},
 		},
 	})

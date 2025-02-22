@@ -37,6 +37,10 @@ type Config struct {
 	RegisterCommands          bool   `json:"register_commands"`
 	Environment               string `json:"environment"` // development or production
 	LevelPrefix               string `json:"level_prefix"`
+	VoucherConfig             struct {
+		Value            int `json:"value"`
+		ExpirationInDays int `json:"expiration_in_days"`
+	} `json:"voucher"`
 }
 
 var BotConfig Config
@@ -99,7 +103,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl)
+	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value, BotConfig.VoucherConfig.ExpirationInDays)
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawaysRepo)
 	var helperService = services.NewHelperService(serverRepo, userRepo, giveawaysRepo)
@@ -114,13 +118,13 @@ func main() {
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
 	log.Debugf("Running with intents: Guilds, GuildMessages, GuildMembers (%v)", session.Identify.Intents)
 
-	var giveawayCommand = commands.NewGiveawayCommand(giveawaysRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
-	var thxCommand = commands.NewThxCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl)
+	var giveawayCommand = commands.NewGiveawayCommand(giveawaysRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value)
+	var thxCommand = commands.NewThxCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value)
 	var thxmeCommand = commands.NewThxmeCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
-	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
+	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, BotConfig.VoucherConfig.Value, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawaysRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService, BotConfig.VoucherConfig.Value)
 	var guildCreateListener = listeners.NewGuildCreateListener(serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
