@@ -18,6 +18,7 @@ type CsrvbotCommand struct {
 	Description              string
 	DMPermission             bool
 	DefaultMemberPermissions int64
+	VoucherValue             int
 	Zero                     float64
 	GiveawayHours            string
 	CraftserveUrl            string
@@ -53,12 +54,13 @@ const (
 	ConditionalGiveawayLevelsSubcommand    = "conditionalgiveawaylevels"
 )
 
-func NewCsrvbotCommand(craftserveUrl, giveawayHours string, serverRepo entities.ServerRepo, giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
+func NewCsrvbotCommand(craftserveUrl, giveawayHours string, voucherValue int, serverRepo entities.ServerRepo, giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
 	return CsrvbotCommand{
 		Name:                     "csrvbot",
 		Description:              "Komendy konfiguracyjne i administracyjne",
 		DMPermission:             false,
 		DefaultMemberPermissions: discordgo.PermissionManageMessages,
+		VoucherValue:             voucherValue,
 		Zero:                     0.0,
 		GiveawayHours:            giveawayHours,
 		CraftserveUrl:            craftserveUrl,
@@ -498,7 +500,7 @@ func (h CsrvbotCommand) handleDelete(ctx context.Context, s *discordgo.Session, 
 			return
 		}
 		log.WithMessage(*participant.MessageId).Debug("Updating thx embed after entry deletion for participant ", participant.UserId)
-		embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantNames, h.GiveawayHours, participant.UserId, "", "reject")
+		embed := discord.ConstructThxEmbed(h.CraftserveUrl, participantNames, h.GiveawayHours, participant.UserId, "", "reject", h.VoucherValue)
 
 		candidate, err := h.GiveawaysRepo.GetParticipantCandidate(ctx, *participant.MessageId)
 		if err != nil {

@@ -1,27 +1,31 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"csrvbot/domain/entities"
+	"csrvbot/domain/values"
+	"csrvbot/dtos"
 	"csrvbot/pkg/logger"
 	"encoding/json"
 	"fmt"
+	"github.com/Craftserve/monies"
 	"io"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
 type CsrvClient struct {
 	Secret        string
 	Environment   string
 	CraftserveUrl string
+	Value         int
+	Expiration    int
 }
 
-func NewCsrvClient(secret, environment, craftserveUrl string) *CsrvClient {
-	return &CsrvClient{Secret: secret, Environment: environment, CraftserveUrl: craftserveUrl}
-}
-
-type VoucherResponse struct {
-	Code string `json:"code"`
+func NewCsrvClient(secret, environment, craftserveUrl string, value, expiration int) *CsrvClient {
+	return &CsrvClient{Secret: secret, Environment: environment, CraftserveUrl: craftserveUrl, Value: value, Expiration: expiration}
 }
 
 func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
@@ -32,29 +36,63 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		return fmt.Sprintf("DEV-%d", rand.Int()), nil
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/generate_voucher", c.CraftserveUrl), nil)
+	prefix, group := "discord", "discord-giveaway"
+	expires := time.Now().Add(24 * time.Duration(c.Expiration) * time.Hour)
+	uses := 1
+	payload := dtos.GenerateVoucherPayload{
+		Length:  values.VoucherLength,
+		Charset: values.VoucherCharset,
+		Prefix:  &prefix,
+		Expires: &expires,
+		GroupId: &group,
+		Uses:    &uses,
+		PerUser: &uses,
+		Actions: []entities.VoucherAction{
+			{
+				WalletTx: map[monies.CurrencyCode]monies.Money{
+					monies.PLN: monies.MustNew(int64(c.Value), monies.PLN), // 5 PLN
+				},
+			},
+		},
+	}
+
+	bodyPayload := new(bytes.Buffer)
+	err := json.NewEncoder(bodyPayload).Encode(payload)
+	if err != nil {
+		return "", fmt.Errorf("GetCSRVCode json.NewEncoder failed: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/admin/voucher/generate", c.CraftserveUrl), bodyPayload)
 	if err != nil {
 		return "", err
 	}
-	req.SetBasicAuth("csrvbot", c.Secret)
+
+	req.AddCookie(&http.Cookie{Name: "user_access_token", Value: c.Secret})
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.WithError(cerr).Error("GetCSRVCode failed to close response body")
+		}
+	}()
 
-	var code VoucherResponse
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("GetCSRVCode failed with status: %d", resp.StatusCode)
+	}
+
+	var voucher entities.Voucher
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("GetCSRVCode io.ReadAll failed: %w", err)
 	}
-	err = json.Unmarshal(bodyBytes, &code)
+
+	err = json.Unmarshal(bodyBytes, &voucher)
 	if err != nil {
-		return "", fmt.Errorf("getCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
+		return "", fmt.Errorf("GetCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
 	}
-	err = resp.Body.Close()
-	if err != nil {
-		log.WithError(err).Error("getCSRVCode resp.Body.Close()")
-	}
-	return code.Code, nil
+
+	return voucher.Id, nil
 }

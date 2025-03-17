@@ -551,7 +551,7 @@ func (repo GiveawaysRepo) UpdateUserDailyMessageCount(ctx context.Context, userI
 
 func (repo GiveawaysRepo) GetUsersWithMessagesFromLastDays(ctx context.Context, dayCount int, guildId string) ([]string, error) {
 	var users []string
-	_, err := repo.mysql.WithContext(ctx).Select(&users, "SELECT DISTINCT user_id FROM daily_user_messagesWHERE guild_id = ? AND DAY > date_sub(now(), INTERVAL ? DAY)", guildId, dayCount)
+	_, err := repo.mysql.WithContext(ctx).Select(&users, "SELECT DISTINCT user_id FROM daily_user_messages WHERE guild_id = ? AND DAY > date_sub(now(), INTERVAL ? DAY)", guildId, dayCount)
 	if err != nil {
 		return nil, err
 	}
