@@ -427,40 +427,30 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 		return
 	}
 
-	winnerIds := make([]string, winnersCount)
+	var winnerIds []string
+	retries := 0
+	maxRetries := len(participants) * 2
 
 	for i := 0; i < winnersCount; i++ {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		winner := participants[r.Intn(len(participants))]
+		winnerIndex := r.Intn(len(participants))
+		winner := participants[winnerIndex]
 		_, err := session.GuildMember(guildId, winner.UserId)
 		if err != nil {
-			var memberIndex int
-			for j, p := range participants {
-				if p.UserId == winner.UserId {
-					memberIndex = j
-					break
-				}
-			}
-
 			log.WithError(err).Error("FinishJoinableGiveaway#session.GuildMember")
-			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
+			participants = append(participants[:winnerIndex], participants[winnerIndex+1:]...)
+			retries++
+			if retries >= maxRetries {
+				log.Error("Too many retries, breaking loop")
+				break
+			}
 			i--
 			continue
 		}
 
-		hasWon, err := h.GiveawaysRepo.HasWonGiveawayByMessageId(ctx, *giveaway.InfoMessageId, winner.UserId)
-		if err != nil {
-			log.WithError(err).Error("FinishJoinableGiveaway#h.GiveawaysRepo.HasWonGiveawayByMessageId")
-			continue
-		}
+		winnerIds = append(winnerIds, winner.UserId)
+		participants = append(participants[:winnerIndex], participants[winnerIndex+1:]...)
 
-		if hasWon {
-			log.WithField("userId", winner.UserId).Debug("User has already won the giveaway, rolling again")
-			i--
-			continue
-		}
-
-		winnerIds[i] = winner.UserId
 		code, err := h.CsrvClient.GetCSRVCode(ctx)
 		if err != nil {
 			log.WithError(err).Error("FinishJoinableGiveaway#h.CsrvClient.GetCSRVCode")
@@ -535,12 +525,21 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 		winnersEmbed = discord.ConstructJoinableWinnersEmbed(h.CraftserveUrl, winnerIds, nil)
 	}
 
-	message, err := session.ChannelMessageSendComplex(channelId, &discordgo.MessageSend{
-		Embed:      winnersEmbed,
-		Components: discord.ConstructJoinableGiveawayWinnerComponents(false),
-	})
-	if err != nil {
-		log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSendComplex")
+	var message *discordgo.Message
+	if len(winnerIds) == 0 {
+		message, err = session.ChannelMessageSend(channelId, "Nie udało się wylosować wszystkich zwycięzców.")
+		if err != nil {
+			log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSend")
+		}
+
+	} else {
+		message, err = session.ChannelMessageSendComplex(channelId, &discordgo.MessageSend{
+			Embed:      winnersEmbed,
+			Components: discord.ConstructJoinableGiveawayWinnerComponents(false),
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSendComplex")
+		}
 	}
 
 	log.Debug("Updating joinable giveaway in database with winners")
