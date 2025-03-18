@@ -36,9 +36,9 @@ type Config struct {
 	CsrvSecret                string `json:"csrv_secret"`
 	RegisterCommands          bool   `json:"register_commands"`
 	Environment               string `json:"environment"` // development or production
-	LevelPrefix               string `json:"level_prefix"`
+	RoleLevelPrefix           string `json:"role_level_prefix"`
 	VoucherConfig             struct {
-		Value            int `json:"value"`
+		ValuePLN         int `json:"value_pln"`
 		ExpirationInDays int `json:"expiration_in_days"`
 	} `json:"voucher"`
 }
@@ -52,13 +52,13 @@ func init() {
 	log.Debug("Opening config.json")
 	configFile, err := os.Open("config.json")
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	log.Debug("Decoding config.json")
 	err = json.NewDecoder(configFile).Decode(&BotConfig)
 	if err != nil {
-		log.Panic("init#Decoder.Decode(&BotConfig)", err)
+		log.Fatal("init#Decoder.Decode(&BotConfig)", err)
 	}
 }
 
@@ -66,8 +66,11 @@ func main() {
 	ctx := pkg.CreateContext()
 	log := logger.GetLoggerFromContext(ctx)
 
-	log.Debugf("Setting discord level prefix to [%s]", BotConfig.LevelPrefix)
-	discord.LevelPrefix = BotConfig.LevelPrefix
+	if BotConfig.RoleLevelPrefix == "" {
+		log.Fatal("RoleLevelPrefix is empty")
+	}
+	log.Debugf("Setting discord level prefix to [%s]", BotConfig.RoleLevelPrefix)
+	discord.LevelPrefix = BotConfig.RoleLevelPrefix
 
 	if BotConfig.Environment == "development" {
 		log.Warn("Running in developer mode!")
@@ -81,18 +84,15 @@ func main() {
 	log.Debug("Initializing MySQL databases")
 	err := db.InitMySQLDatabases(ctx, BotConfig.MysqlConfig)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	log.Debug("Getting MySQL database")
 	dbMap, err := db.GetMySQLDatabase("main")
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
-	//var giveawayRepo = repos.NewGiveawayRepo(dbMap)
-	//var messageGiveawayRepo = repos.NewMessageGiveawayRepo(dbMap)
-	//var joinableGiveawayRepo = repos.NewJoinableGiveawayRepo(dbMap)
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 	var giveawaysRepo = repos.NewGiveawaysRepo(dbMap)
@@ -100,10 +100,10 @@ func main() {
 	log.Debug("Creating tables...")
 	err = db.CreateTablesIfNotExists()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
-	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value, BotConfig.VoucherConfig.ExpirationInDays)
+	var csrvClient = services.NewCsrvClient(BotConfig.CsrvSecret, BotConfig.Environment, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.ValuePLN, BotConfig.VoucherConfig.ExpirationInDays)
 	var githubClient = services.NewGithubClient()
 	var giveawayService = services.NewGiveawayService(csrvClient, BotConfig.CraftserveUrl, serverRepo, giveawaysRepo)
 	var helperService = services.NewHelperService(serverRepo, userRepo, giveawaysRepo)
@@ -112,19 +112,19 @@ func main() {
 	log.Debug("Initializing discordgo session")
 	session, err := discordgo.New("Bot " + BotConfig.SystemToken)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers
 	log.Debugf("Running with intents: Guilds, GuildMessages, GuildMembers (%v)", session.Identify.Intents)
 
-	var giveawayCommand = commands.NewGiveawayCommand(giveawaysRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value)
-	var thxCommand = commands.NewThxCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.Value)
+	var giveawayCommand = commands.NewGiveawayCommand(giveawaysRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.ValuePLN)
+	var thxCommand = commands.NewThxCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, BotConfig.VoucherConfig.ValuePLN)
 	var thxmeCommand = commands.NewThxmeCommand(giveawaysRepo, userRepo, serverRepo, BotConfig.ThxGiveawayTimeString)
-	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, BotConfig.VoucherConfig.Value, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
+	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, BotConfig.VoucherConfig.ValuePLN, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawaysRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService, BotConfig.VoucherConfig.Value)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService, BotConfig.VoucherConfig.ValuePLN)
 	var guildCreateListener = listeners.NewGuildCreateListener(serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
@@ -138,7 +138,7 @@ func main() {
 	log.Debug("Opening discordgo session")
 	err = session.Open()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	log.WithField("username", session.State.User).Info("Bot logged in")
@@ -173,7 +173,6 @@ func main() {
 
 	err = c.AddFunc(BotConfig.UnconditionalGiveawayCron, func() {
 		giveawayService.FinishJoinableGiveaways(ctx, session, false)
-		//giveawayService.FinishUnconditionalGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Fatalf("Could not set unconditional giveaway cron job: %v", err)
@@ -181,7 +180,6 @@ func main() {
 
 	err = c.AddFunc(BotConfig.ConditionalGiveawayCron, func() {
 		giveawayService.FinishJoinableGiveaways(ctx, session, true)
-		//giveawayService.FinishConditionalGiveaways(ctx, session)
 	})
 	if err != nil {
 		log.Fatalf("Could not set conditional giveaway cron job: %v", err)
@@ -194,7 +192,7 @@ func main() {
 	log.Info("Shutting down...")
 	err = session.Close()
 	if err != nil {
-		log.Panic("Could not close session", err)
+		log.Fatal("Could not close session", err)
 	}
 }
 

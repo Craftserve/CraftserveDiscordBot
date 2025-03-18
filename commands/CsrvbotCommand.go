@@ -172,22 +172,22 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 							},
 						},
 					},
-					{
-						Name:        UnconditionalGiveawayChannelSubcommand,
-						Description: "Kanał na którym odbywa się bezwarunkowy giveaway",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-						Options: []*discordgo.ApplicationCommandOption{
-							{
-								Type: discordgo.ApplicationCommandOptionChannel,
-								ChannelTypes: []discordgo.ChannelType{
-									discordgo.ChannelTypeGuildText,
-								},
-								Name:        "channel",
-								Description: "Kanał na którym odbywa się bezwarunkowy giveaway",
-								Required:    true,
-							},
-						},
-					},
+					//{
+					//	Name:        UnconditionalGiveawayChannelSubcommand,
+					//	Description: "Kanał na którym odbywa się bezwarunkowy giveaway",
+					//	Type:        discordgo.ApplicationCommandOptionSubCommand,
+					//	Options: []*discordgo.ApplicationCommandOption{
+					//		{
+					//			Type: discordgo.ApplicationCommandOptionChannel,
+					//			ChannelTypes: []discordgo.ChannelType{
+					//				discordgo.ChannelTypeGuildText,
+					//			},
+					//			Name:        "channel",
+					//			Description: "Kanał na którym odbywa się bezwarunkowy giveaway",
+					//			Required:    true,
+					//		},
+					//	},
+					//},
 					{
 						Name:        UnconditionalWinnerCountSubcommand,
 						Description: "Ilość wybieranych zwycięzców w bezwarunkowym giveawayu",
@@ -202,22 +202,22 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 							},
 						},
 					},
-					{
-						Name:        ConditionalGiveawayChannelSubcommand,
-						Description: "Kanał na którym odbywa się warunkowy giveaway",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-						Options: []*discordgo.ApplicationCommandOption{
-							{
-								Type: discordgo.ApplicationCommandOptionChannel,
-								ChannelTypes: []discordgo.ChannelType{
-									discordgo.ChannelTypeGuildText,
-								},
-								Name:        "channel",
-								Description: "Kanał na którym odbywa się warunkowy giveaway",
-								Required:    true,
-							},
-						},
-					},
+					//{
+					//	Name:        ConditionalGiveawayChannelSubcommand,
+					//	Description: "Kanał na którym odbywa się warunkowy giveaway",
+					//	Type:        discordgo.ApplicationCommandOptionSubCommand,
+					//	Options: []*discordgo.ApplicationCommandOption{
+					//		{
+					//			Type: discordgo.ApplicationCommandOptionChannel,
+					//			ChannelTypes: []discordgo.ChannelType{
+					//				discordgo.ChannelTypeGuildText,
+					//			},
+					//			Name:        "channel",
+					//			Description: "Kanał na którym odbywa się warunkowy giveaway",
+					//			Required:    true,
+					//		},
+					//	},
+					//},
 					{
 						Name:        ConditionalWinnerCountSubcommand,
 						Description: "Ilość wybieranych zwycięzców w warunkowym giveawayu",
@@ -404,12 +404,12 @@ func (h CsrvbotCommand) handleSettings(ctx context.Context, s *discordgo.Session
 		h.handleHelperThxAmountSet(ctx, s, i)
 	case WinnerCountSubcommand:
 		h.handleWinnerCountSet(ctx, s, i)
-	case UnconditionalGiveawayChannelSubcommand:
-		h.handleUnconditionalGiveawayChannelSet(ctx, s, i)
+	//case UnconditionalGiveawayChannelSubcommand:
+	//	h.handleUnconditionalGiveawayChannelSet(ctx, s, i)
 	case UnconditionalWinnerCountSubcommand:
 		h.handleUnconditionalWinnersCountSet(ctx, s, i)
-	case ConditionalGiveawayChannelSubcommand:
-		h.handleConditionalGiveawayChannelSet(ctx, s, i)
+	//case ConditionalGiveawayChannelSubcommand:
+	//	h.handleConditionalGiveawayChannelSet(ctx, s, i)
 	case ConditionalWinnerCountSubcommand:
 		h.handleConditionalWinnersCountSet(ctx, s, i)
 	case ConditionalGiveawayLevelsSubcommand:
@@ -448,11 +448,9 @@ func (h CsrvbotCommand) handleStart(ctx context.Context, s *discordgo.Session, i
 		go h.GiveawayService.FinishMessageGiveaway(ctx, s, guild.ID)
 	case "unconditional":
 		log.Debug("Starting unconditional giveaway")
-		//go h.GiveawayService.FinishUnconditionalGiveaway(ctx, s, guild.ID)
 		go h.GiveawayService.FinishJoinableGiveaway(ctx, s, guild.ID, false)
 	case "conditional":
 		log.Debug("Starting conditional giveaway")
-		//go h.GiveawayService.FinishConditionalGiveaway(ctx, s, guild.ID)
 		go h.GiveawayService.FinishJoinableGiveaway(ctx, s, guild.ID, true)
 	}
 	discord.RespondWithMessage(ctx, s, i, "Podjęto próbę rozstrzygnięcia giveawayu")
@@ -665,6 +663,8 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 		return
 	}
 	serverConfig.MainChannel = channelId
+	serverConfig.ConditionalGiveawayChannel = channelId
+	serverConfig.UnconditionalGiveawayChannel = channelId // @TODO remove conditional and unconditional channels entirely, we only need one
 	log.Debug("Updating server config with new giveaway channel")
 	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
 	if err != nil {
@@ -674,6 +674,14 @@ func (h CsrvbotCommand) handleGiveawayChannelSet(ctx context.Context, s *discord
 	}
 	log.Infof("%s set giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do ogłoszeń giveawaya na "+channel.Mention())
+	guild, err := s.Guild(i.GuildID)
+	if err != nil {
+		log.WithError(err).Error("handleGiveawayChannelSet s.Guild", err)
+		return
+	}
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, false)
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, true)
+	h.GiveawayService.CreateMissingThxGiveaways(ctx, s, guild)
 }
 
 func (h CsrvbotCommand) handleThxInfoChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -831,40 +839,40 @@ func (h CsrvbotCommand) handleWinnerCountSet(ctx context.Context, s *discordgo.S
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono ilość wybieranych osób w giveawayu z wiadomości na "+strconv.FormatUint(amount, 10))
 }
 
-func (h CsrvbotCommand) handleUnconditionalGiveawayChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	log := logger.GetLoggerFromContext(ctx)
-	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[0].ChannelValue(s).ID
-	channel, err := s.Channel(channelId)
-	if err != nil {
-		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet s.Channel", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-
-	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
-	if err != nil {
-		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-	if serverConfig.UnconditionalGiveawayChannel == channelId {
-		log.Debug("Unconditional giveaway channel is the same as current")
-		discord.RespondWithMessage(ctx, s, i, "Kanał do bezwarunkowych giveawayów jest już ustawiony na "+channel.Mention())
-		return
-	}
-
-	serverConfig.UnconditionalGiveawayChannel = channelId
-	log.Debug("Updating server config with new unconditional giveaway channel")
-	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
-	if err != nil {
-		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet h.ServerRepo.UpdateServerConfig", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-
-	log.Infof("%s set unconditional giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
-	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do bezwarunkowych giveawayów na "+channel.Mention())
-}
+//func (h CsrvbotCommand) handleUnconditionalGiveawayChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+//	log := logger.GetLoggerFromContext(ctx)
+//	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[0].ChannelValue(s).ID
+//	channel, err := s.Channel(channelId)
+//	if err != nil {
+//		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet s.Channel", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//
+//	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+//	if err != nil {
+//		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//	if serverConfig.UnconditionalGiveawayChannel == channelId {
+//		log.Debug("Unconditional giveaway channel is the same as current")
+//		discord.RespondWithMessage(ctx, s, i, "Kanał do bezwarunkowych giveawayów jest już ustawiony na "+channel.Mention())
+//		return
+//	}
+//
+//	serverConfig.UnconditionalGiveawayChannel = channelId
+//	log.Debug("Updating server config with new unconditional giveaway channel")
+//	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+//	if err != nil {
+//		log.WithError(err).Error("handleUnconditionalGiveawayChannelSet h.ServerRepo.UpdateServerConfig", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//
+//	log.Infof("%s set unconditional giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
+//	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do bezwarunkowych giveawayów na "+channel.Mention())
+//}
 
 func (h CsrvbotCommand) handleUnconditionalWinnersCountSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
@@ -903,43 +911,49 @@ func (h CsrvbotCommand) handleUnconditionalWinnersCountSet(ctx context.Context, 
 
 	log.Infof("%s set unconditional winnercount to %d", i.Member.User.Username, amount)
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono ilość wybieranych osób w bezwarunkowym giveawayu na "+strconv.FormatUint(amount, 10))
+	guild, err := s.Guild(i.GuildID)
+	if err != nil {
+		log.WithError(err).Error("handleGiveawayChannelSet s.Guild", err)
+		return
+	}
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, false)
 }
 
-func (h CsrvbotCommand) handleConditionalGiveawayChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	log := logger.GetLoggerFromContext(ctx)
-	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[0].ChannelValue(s).ID
-	channel, err := s.Channel(channelId)
-	if err != nil {
-		log.WithError(err).Error("handleConditionalGiveawayChannelSet s.Channel", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-
-	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
-	if err != nil {
-		log.WithError(err).Error("handleConditionalGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-
-	if serverConfig.ConditionalGiveawayChannel == channelId {
-		log.Debug("Conditional giveaway channel is the same as current")
-		discord.RespondWithMessage(ctx, s, i, "Kanał do warunkowych giveawayów jest już ustawiony na "+channel.Mention())
-		return
-	}
-
-	serverConfig.ConditionalGiveawayChannel = channelId
-	log.Debug("Updating server config with new conditional giveaway channel")
-	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
-	if err != nil {
-		log.WithError(err).Error("handleConditionalGiveawayChannelSet h.ServerRepo.UpdateServerConfig", err)
-		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
-		return
-	}
-
-	log.Infof("%s set conditional giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
-	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do warunkowych giveawayów na "+channel.Mention())
-}
+//func (h CsrvbotCommand) handleConditionalGiveawayChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+//	log := logger.GetLoggerFromContext(ctx)
+//	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[0].ChannelValue(s).ID
+//	channel, err := s.Channel(channelId)
+//	if err != nil {
+//		log.WithError(err).Error("handleConditionalGiveawayChannelSet s.Channel", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//
+//	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+//	if err != nil {
+//		log.WithError(err).Error("handleConditionalGiveawayChannelSet h.ServerRepo.GetServerConfigForGuild", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//
+//	if serverConfig.ConditionalGiveawayChannel == channelId {
+//		log.Debug("Conditional giveaway channel is the same as current")
+//		discord.RespondWithMessage(ctx, s, i, "Kanał do warunkowych giveawayów jest już ustawiony na "+channel.Mention())
+//		return
+//	}
+//
+//	serverConfig.ConditionalGiveawayChannel = channelId
+//	log.Debug("Updating server config with new conditional giveaway channel")
+//	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+//	if err != nil {
+//		log.WithError(err).Error("handleConditionalGiveawayChannelSet h.ServerRepo.UpdateServerConfig", err)
+//		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+//		return
+//	}
+//
+//	log.Infof("%s set conditional giveaway channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
+//	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał do warunkowych giveawayów na "+channel.Mention())
+//}
 
 func (h CsrvbotCommand) handleConditionalWinnersCountSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
@@ -974,6 +988,12 @@ func (h CsrvbotCommand) handleConditionalWinnersCountSet(ctx context.Context, s 
 
 	log.Infof("%s set conditional winnercount to %d", i.Member.User.Username, amount)
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono ilość wybieranych osób w warunkowym giveawayu na "+strconv.FormatUint(amount, 10))
+	guild, err := s.Guild(i.GuildID)
+	if err != nil {
+		log.WithError(err).Error("handleGiveawayChannelSet s.Guild", err)
+		return
+	}
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, true)
 }
 
 func (h CsrvbotCommand) handleConditionalGiveawayLevelsSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -1045,4 +1065,10 @@ func (h CsrvbotCommand) handleConditionalGiveawayLevelsSet(ctx context.Context, 
 
 	log.Infof("%s set conditional giveaway levels to %s", i.Member.User.Username, strings.Join(levelsStrings, ", "))
 	discord.RespondWithMessage(ctx, s, i, "Ustawiono poziomy giveawayu warunkowego na "+strings.Join(levelsStrings, ", "))
+	guild, err := s.Guild(i.GuildID)
+	if err != nil {
+		log.WithError(err).Error("handleGiveawayChannelSet s.Guild", err)
+		return
+	}
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, true)
 }

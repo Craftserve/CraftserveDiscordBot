@@ -8,6 +8,7 @@ import (
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"database/sql"
+	"errors"
 	"github.com/bwmarrin/discordgo"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -23,7 +24,6 @@ type GuildCreateListener struct {
 
 func NewGuildCreateListener(serverRepo entities.ServerRepo, giveawayService *services.GiveawayService, helperService *services.HelperService, savedRoleService *services.SavedroleService) GuildCreateListener {
 	return GuildCreateListener{
-		//GiveawaysRepo:    giveawaysRepo,
 		ServerRepo:       serverRepo,
 		GiveawayService:  *giveawayService,
 		HelperService:    *helperService,
@@ -42,18 +42,14 @@ func (h GuildCreateListener) Handle(s *discordgo.Session, g *discordgo.GuildCrea
 	log.Debug("Creating configuration if not exists")
 	h.createConfigurationIfNotExists(ctx, s, g.Guild.ID)
 
-	log.Debug("Creating missing giveaways for guild")
-	h.GiveawayService.CreateMissingGiveaways(ctx, s, g.Guild)
+	log.Debug("Creating missing thx giveaways for guild")
+	h.GiveawayService.CreateMissingThxGiveaways(ctx, s, g.Guild)
 
 	log.Debug("Creating missing unconditional giveaways for guild")
-	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, nil)
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, false)
 
 	log.Debug("Creating missing conditional giveaways for guild")
-	level, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, g.Guild.ID)
-	if err != nil {
-		log.WithError(err).Error("Could not pick level for giveaway")
-	}
-	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, level)
+	h.GiveawayService.CreateJoinableGiveaway(ctx, s, g.Guild, true)
 
 	log.Debug("Updating all members saved roles for guild")
 	h.updateAllMembersSavedRoles(ctx, s, g.Guild.ID)
@@ -83,7 +79,7 @@ func (h GuildCreateListener) createConfigurationIfNotExists(ctx context.Context,
 
 	_, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			log.Debug("Creating server config")
 			err = h.ServerRepo.InsertServerConfig(ctx, guildID, giveawayChannel, adminRole)
 			if err != nil {
