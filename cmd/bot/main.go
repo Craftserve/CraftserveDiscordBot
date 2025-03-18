@@ -50,9 +50,16 @@ func init() {
 	logger.ConfigureLogger()
 	log := logger.GetLoggerFromContext(ctx)
 	log.Debug("Opening config.json")
-	configFile, err := os.Open("config.json")
+
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.json"
+	}
+
+	log.Debug("Opening config.json")
+	configFile, err := os.Open(configPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	log.Debug("Decoding config.json")
