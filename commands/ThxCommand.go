@@ -163,7 +163,6 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 	}
 
 	err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, level, guild.ID, selectedUser.ID, selectedUser.Username, &response.ID, &i.ChannelID)
-	//err = h.GiveawaysRepo.InsertParticipant(ctx, giveaway.Id, i.GuildID, guild.Name, selectedUser.ID, selectedUser.Username, i.ChannelID, response.ID)
 	if err != nil {
 		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.InsertParticipant")
 		str := "Coś poszło nie tak przy dodawaniu podziękowania :("

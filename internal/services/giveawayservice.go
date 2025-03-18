@@ -17,9 +17,6 @@ type GiveawayService struct {
 	CsrvClient    CsrvClient
 	CraftserveUrl string
 	ServerRepo    entities.ServerRepo
-	//GiveawayRepo         entities.GiveawayRepo
-	//MessageGiveawayRepo  entities.MessageGiveawayRepo
-	//JoinableGiveawayRepo entities.JoinableGiveawayRepo
 	GiveawaysRepo entities.GiveawaysRepo
 }
 
@@ -28,9 +25,6 @@ func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo
 		CsrvClient:    *csrvClient,
 		CraftserveUrl: craftserveUrl,
 		ServerRepo:    serverRepo,
-		//GiveawayRepo:         giveawayRepo,
-		//MessageGiveawayRepo:  messageGiveawayRepo,
-		//JoinableGiveawayRepo: joinableGiveawayRepo,
 		GiveawaysRepo: giveawaysRepo,
 	}
 }
@@ -49,7 +43,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Debug("Giveaway for guild does not exist, creating...")
-			h.CreateMissingGiveaways(ctx, s, guild)
+			h.CreateMissingThxGiveaways(ctx, s, guild)
 			return
 		}
 
@@ -82,7 +76,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 
 		// Create new giveaway
 		log.Info("Creating missing giveaways")
-		h.CreateMissingGiveaways(ctx, s, guild)
+		h.CreateMissingThxGiveaways(ctx, s, guild)
 
 		return
 	}
@@ -139,7 +133,7 @@ func (h *GiveawayService) FinishGiveaway(ctx context.Context, s *discordgo.Sessi
 	log.Infof("Giveaway ended with a winner: %s", member.User.Username)
 
 	log.Info("Creating missing giveaways")
-	h.CreateMissingGiveaways(ctx, s, guild)
+	h.CreateMissingThxGiveaways(ctx, s, guild)
 }
 
 func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Session) {
@@ -158,22 +152,22 @@ func (h *GiveawayService) FinishGiveaways(ctx context.Context, s *discordgo.Sess
 	}
 }
 
-func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
+func (h *GiveawayService) CreateMissingThxGiveaways(ctx context.Context, s *discordgo.Session, guild *discordgo.Guild) {
 	log := logger.GetLoggerFromContext(ctx).WithGuild(guild.ID)
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guild.ID)
 	if err != nil {
-		log.WithError(err).Error("CreateMissingGiveaways#h.ServerRepo.GetServerConfigForGuild")
+		log.WithError(err).Error("CreateMissingThxGiveaways#h.ServerRepo.GetServerConfigForGuild")
 		return
 	}
 	giveawayChannelId := serverConfig.MainChannel
 	_, err = s.Channel(giveawayChannelId)
 	if err != nil {
-		log.WithError(err).Error("CreateMissingGiveaways#s.Channel")
+		log.WithError(err).Error("CreateMissingThxGiveaways#s.Channel")
 		return
 	}
 	_, err = h.GiveawaysRepo.GetGiveawayForGuild(ctx, guild.ID, entities.ThxGiveawayType)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.WithError(err).Error("CreateMissingGiveaways#h.GiveawaysRepo.GetGiveawayForGuild")
+		log.WithError(err).Error("CreateMissingThxGiveaways#h.GiveawaysRepo.GetGiveawayForGuild")
 		return
 	}
 
@@ -181,7 +175,7 @@ func (h *GiveawayService) CreateMissingGiveaways(ctx context.Context, s *discord
 		log.Debug("Giveaway for guild does not exist, creating...")
 		err = h.GiveawaysRepo.InsertGiveaway(ctx, guild.ID, nil, entities.ThxGiveawayType, nil)
 		if err != nil {
-			log.WithError(err).Error("CreateMissingGiveaways#h.GiveawaysRepo.InsertGiveaway")
+			log.WithError(err).Error("CreateMissingThxGiveaways#h.GiveawaysRepo.InsertGiveaway")
 			return
 		}
 	}
@@ -239,14 +233,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		log.Infof("Message giveaway ended without any participants.")
 		return
 	}
-
-	//messageGiveawayRepoTx, tx, err := h.MessageGiveawayRepo.WithTx(ctx, nil)
-	//if err != nil {
-	//	log.WithError(err).Error("FinishMessageGiveaway#messageGiveawayRepo.WithTx")
-	//	return
-	//}
-	////goland:noinspection GoUnhandledErrorResult
-	//defer tx.Rollback()
 
 	log.Debug("Inserting message giveaway into database")
 	err = h.GiveawaysRepo.InsertGiveaway(ctx, guildId, nil, entities.MessageGiveawayType, nil)
@@ -313,11 +299,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		}
 
 	}
-	//err = tx.Commit()
-	//if err != nil {
-	//	log.WithError(err).Error("FinishMessageGiveaway#tx.Commit")
-	//	return
-	//}
 
 	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(h.CraftserveUrl, winnerNames)
 	message, err := session.ChannelMessageSendComplex(giveawayChannelId, &discordgo.MessageSend{
@@ -372,18 +353,7 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Debug("Joinable giveaway for guild does not exist, creating...")
 
-			if withLevel {
-				level, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, guildId)
-				if err != nil {
-					log.WithError(err).Error("FinishJoinableGiveaway#discord.PickLevelForGiveaway")
-					return
-				}
-
-				h.CreateJoinableGiveaway(ctx, session, guild, level)
-				return
-			}
-
-			h.CreateJoinableGiveaway(ctx, session, guild, nil)
+			h.CreateJoinableGiveaway(ctx, session, guild, withLevel)
 			return
 		}
 
@@ -452,55 +422,35 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 
 		// Create new joinable giveaway
 		log.Info("Creating missing joinable giveaways")
-		if withLevel {
-			level, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, guildId)
-			if err != nil {
-				log.WithError(err).Error("FinishJoinableGiveaway#discord.PickLevelForGiveaway")
-				return
-			}
-
-			h.CreateJoinableGiveaway(ctx, session, guild, level)
-		} else {
-			h.CreateJoinableGiveaway(ctx, session, guild, nil)
-		}
+		h.CreateJoinableGiveaway(ctx, session, guild, withLevel)
 
 		return
 	}
 
-	winnerIds := make([]string, winnersCount)
+	var winnerIds []string
+	retries := 0
+	maxRetries := len(participants) * 2
 
 	for i := 0; i < winnersCount; i++ {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		winner := participants[r.Intn(len(participants))]
+		winnerIndex := r.Intn(len(participants))
+		winner := participants[winnerIndex]
 		_, err := session.GuildMember(guildId, winner.UserId)
 		if err != nil {
-			var memberIndex int
-			for j, p := range participants {
-				if p.UserId == winner.UserId {
-					memberIndex = j
-					break
-				}
-			}
-
 			log.WithError(err).Error("FinishJoinableGiveaway#session.GuildMember")
-			participants = append(participants[:memberIndex], participants[memberIndex+1:]...)
+			participants = append(participants[:winnerIndex], participants[winnerIndex+1:]...)
+			retries++
+			if retries >= maxRetries {
+				log.Error("Too many retries, breaking loop")
+				break
+			}
 			i--
 			continue
 		}
 
-		hasWon, err := h.GiveawaysRepo.HasWonGiveawayByMessageId(ctx, *giveaway.InfoMessageId, winner.UserId)
-		if err != nil {
-			log.WithError(err).Error("FinishJoinableGiveaway#h.GiveawaysRepo.HasWonGiveawayByMessageId")
-			continue
-		}
+		winnerIds = append(winnerIds, winner.UserId)
+		participants = append(participants[:winnerIndex], participants[winnerIndex+1:]...)
 
-		if hasWon {
-			log.WithField("userId", winner.UserId).Debug("User has already won the giveaway, rolling again")
-			i--
-			continue
-		}
-
-		winnerIds[i] = winner.UserId
 		code, err := h.CsrvClient.GetCSRVCode(ctx)
 		if err != nil {
 			log.WithError(err).Error("FinishJoinableGiveaway#h.CsrvClient.GetCSRVCode")
@@ -575,12 +525,21 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 		winnersEmbed = discord.ConstructJoinableWinnersEmbed(h.CraftserveUrl, winnerIds, nil)
 	}
 
-	message, err := session.ChannelMessageSendComplex(channelId, &discordgo.MessageSend{
-		Embed:      winnersEmbed,
-		Components: discord.ConstructJoinableGiveawayWinnerComponents(false),
-	})
-	if err != nil {
-		log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSendComplex")
+	var message *discordgo.Message
+	if len(winnerIds) == 0 {
+		message, err = session.ChannelMessageSend(channelId, "Nie udało się wylosować wszystkich zwycięzców.")
+		if err != nil {
+			log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSend")
+		}
+
+	} else {
+		message, err = session.ChannelMessageSendComplex(channelId, &discordgo.MessageSend{
+			Embed:      winnersEmbed,
+			Components: discord.ConstructJoinableGiveawayWinnerComponents(false),
+		})
+		if err != nil {
+			log.WithError(err).Error("FinishJoinableGiveaway#session.ChannelMessageSendComplex")
+		}
 	}
 
 	log.Debug("Updating joinable giveaway in database with winners")
@@ -593,17 +552,7 @@ func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *d
 
 	// Create new joinable giveaway
 	log.Info("Creating missing joinable giveaways")
-	if withLevel {
-		level, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, guildId)
-		if err != nil {
-			log.WithError(err).Error("FinishJoinableGiveaway#discord.PickLevelForGiveaway")
-			return
-		}
-
-		h.CreateJoinableGiveaway(ctx, session, guild, level)
-	} else {
-		h.CreateJoinableGiveaway(ctx, session, guild, nil)
-	}
+	h.CreateJoinableGiveaway(ctx, session, guild, withLevel)
 }
 
 func (h *GiveawayService) FinishJoinableGiveaways(ctx context.Context, session *discordgo.Session, withLevel bool) {
@@ -630,7 +579,7 @@ func (h *GiveawayService) FinishJoinableGiveaways(ctx context.Context, session *
 	}
 }
 
-func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *discordgo.Session, guild *discordgo.Guild, level *int) {
+func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *discordgo.Session, guild *discordgo.Guild, withLevel bool) {
 	log := logger.GetLoggerFromContext(ctx)
 	log.Info("Creating joinable giveaway for guild")
 
@@ -640,11 +589,15 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 		return
 	}
 
-	if level == nil {
+	if !withLevel {
 		log.Debug("Checking if giveaway without level for guild exists")
 		_, err = h.GiveawaysRepo.GetGiveawayForGuild(ctx, guild.ID, entities.JoinedGiveawayType)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			log.WithError(err).Error("CreateJoinableGiveaway#h.GiveawaysRepo.GetGiveawayForGuild")
+			return
+		}
+		if serverConfig.UnconditionalGiveawayWinners == 0 {
+			log.Debug("Unconditional giveaway winners count is set to 0, skipping...")
 			return
 		}
 	} else {
@@ -654,6 +607,10 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 			log.WithError(err).Error("CreateJoinableGiveaway#h.GiveawaysRepo.GetGiveawayForGuild")
 			return
 		}
+		if serverConfig.ConditionalGiveawayWinners == 0 {
+			log.Debug("Conditional giveaway winners count is set to 0, skipping...")
+			return
+		}
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -661,8 +618,9 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 
 		var channelId string
 		var embed *discordgo.MessageEmbed
+		var level *int
 
-		if level == nil {
+		if !withLevel {
 			log.Debug("Sending info for unconditional giveaway")
 			channelId = serverConfig.UnconditionalGiveawayChannel
 			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, 0, nil)
@@ -670,13 +628,25 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 			log.Debug("Sending info for conditional giveaway")
 			channelId = serverConfig.ConditionalGiveawayChannel
 
-			levelRole, err := discord.GetRoleForLevel(ctx, session, guild.ID, *level)
+			foundLevel, err := discord.PickLevelForGiveaway(ctx, h.ServerRepo, guild.ID)
+			if err != nil {
+				log.WithError(err).Error("CreateJoinableGiveaway#discord.PickLevelForGiveaway")
+				return
+			}
+			level = &foundLevel
+			levelRole, err := discord.GetRoleForLevel(ctx, session, guild.ID, foundLevel)
 			if err != nil {
 				log.WithError(err).Error("CreateJoinableGiveaway#discord.GetRoleForLevel")
 				return
 			}
 
 			embed = discord.ConstructJoinableGiveawayEmbed(h.CraftserveUrl, 0, &levelRole.ID)
+		}
+
+		_, err = session.Channel(channelId)
+		if err != nil {
+			log.WithError(err).Error("CreateJoinableGiveaway#session.Channel")
+			return
 		}
 
 		message, err := session.ChannelMessageSendComplex(channelId, &discordgo.MessageSend{
@@ -689,7 +659,7 @@ func (h *GiveawayService) CreateJoinableGiveaway(ctx context.Context, session *d
 		}
 
 		var giveawayType string
-		if level == nil {
+		if !withLevel {
 			giveawayType = entities.JoinedGiveawayType
 		} else {
 			giveawayType = entities.LevelGiveawayType

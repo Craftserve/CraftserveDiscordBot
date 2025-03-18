@@ -82,6 +82,8 @@ func (repo *ServerRepo) InsertServerConfig(ctx context.Context, guildId, giveawa
 	var serverConfig SqlServerConfig
 	serverConfig.GuildId = guildId
 	serverConfig.MainChannel = giveawayChannel
+	serverConfig.ConditionalGiveawayChannel = giveawayChannel
+	serverConfig.UnconditionalGiveawayChannel = giveawayChannel
 	serverConfig.AdminRoleId = adminRole
 	serverConfig.HelperRoleThxesNeeded = 0
 	err := repo.mysql.WithContext(ctx).Insert(&serverConfig)
