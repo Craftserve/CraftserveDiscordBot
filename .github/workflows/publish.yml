@@ -5,7 +5,7 @@ on:
       tag:
         description: 'Tag for image'
         required: true
-        default: 'stable'
+        default: 'main'
 
 env:
   TAG: ${{ github.event.inputs.tag }}
