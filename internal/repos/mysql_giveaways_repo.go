@@ -430,9 +430,9 @@ func (repo GiveawaysRepo) HasThxAmount(ctx context.Context, guildId, memberId st
 	return count > 1, nil
 }
 
-func (repo GiveawaysRepo) GetThxNotification(ctx context.Context, messageId string) (entities.ThxNotification, error) {
+func (repo GiveawaysRepo) GetThxNotification(ctx context.Context, thxMessageId string) (entities.ThxNotification, error) {
 	var notification SqlThxNotification
-	if err := repo.mysql.WithContext(ctx).SelectOne(&notification, "SELECT id, thx_message_id, notification_message_id FROM thx_notifications WHERE notification_message_id = ?", messageId); err != nil {
+	if err := repo.mysql.WithContext(ctx).SelectOne(&notification, "SELECT id, thx_message_id, notification_message_id FROM thx_notifications WHERE thx_message_id = ?", thxMessageId); err != nil {
 		return entities.ThxNotification{}, err
 	}
 

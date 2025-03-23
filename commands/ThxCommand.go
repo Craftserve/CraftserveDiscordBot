@@ -182,6 +182,11 @@ func (h ThxCommand) Handle(ctx context.Context, s *discordgo.Session, i *discord
 		return
 	}
 
+	if serverConfig.ThxInfoChannel == "" {
+		log.Warn("ThxInfoChannel is empty")
+		return
+	}
+
 	thxNotification, err := h.GiveawaysRepo.GetThxNotification(ctx, response.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.WithError(err).Error("handleThxCommand#GiveawaysRepo.GetThxNotification")
