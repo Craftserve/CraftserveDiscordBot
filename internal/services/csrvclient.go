@@ -38,15 +38,16 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 
 	prefix, group := "discord", "discord-giveaway"
 	expires := time.Now().Add(24 * time.Duration(c.ExpirationDays) * time.Hour)
-	uses := 1
+	uses, quantity := 1, 1
 	payload := dtos.GenerateVoucherPayload{
-		Length:  values.VoucherLength,
-		Charset: values.VoucherCharset,
-		Prefix:  &prefix,
-		Expires: &expires,
-		GroupId: &group,
-		Uses:    &uses,
-		PerUser: &uses,
+		Length:   values.VoucherLength,
+		Charset:  values.VoucherCharset,
+		Prefix:   &prefix,
+		Expires:  &expires,
+		GroupId:  &group,
+		Uses:     &uses,
+		PerUser:  &uses,
+		Quantity: &quantity,
 		Actions: []entities.VoucherAction{
 			{
 				WalletTx: map[monies.CurrencyCode]monies.Money{
@@ -83,7 +84,7 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("GetCSRVCode failed with status: %d", resp.StatusCode)
 	}
 
-	var voucher entities.Voucher
+	var voucher [1]entities.Voucher
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("GetCSRVCode io.ReadAll failed: %w", err)
@@ -94,5 +95,9 @@ func (c *CsrvClient) GetCSRVCode(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("GetCSRVCode json.Unmarshal failed: %w with body: %s", err, string(bodyBytes))
 	}
 
-	return voucher.Id, nil
+	if len(voucher) == 0 {
+		return "", fmt.Errorf("GetCSRVCode voucher not found in response")
+	}
+
+	return voucher[0].Id, nil
 }
