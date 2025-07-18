@@ -272,11 +272,17 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		code, err := h.CsrvClient.GetCSRVCode(ctx)
 		if err != nil {
 			log.WithError(err).Error("FinishMessageGiveaway#csrvClient.GetCSRVCode")
-			_, err = session.ChannelMessageSend(giveawayChannelId, "Błąd API Craftserve, nie udało się pobrać kodu!")
+			message, err := session.ChannelMessageSend(giveawayChannelId, "Błąd API Craftserve, nie udało się pobrać kodu!")
 			if err != nil {
 				log.WithError(err).Error("FinishMessageGiveaway#s.ChannelMessageSend")
-				return
 			}
+
+			log.Debug("Updating message giveaway in database with message id")
+			err = h.GiveawaysRepo.FinishGiveaway(ctx, giveaway, &message.ID)
+			if err != nil {
+				log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.FinishMessageGiveaway")
+			}
+
 			return
 		}
 
@@ -297,7 +303,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		if err != nil && !discord.EqualError(err, discordgo.ErrCodeCannotSendMessagesToThisUser) {
 			log.WithError(err).Error("FinishMessageGiveaway#session.ChannelMessageSendEmbed")
 		}
-
 	}
 
 	mainEmbed := discord.ConstructChannelMessageWinnerEmbed(h.CraftserveUrl, winnerNames)
@@ -315,7 +320,6 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.FinishMessageGiveaway")
 	}
 	log.Infof("Message giveaway ended with a winners: %s", strings.Join(winnerNames, ", "))
-
 }
 
 func (h *GiveawayService) FinishJoinableGiveaway(ctx context.Context, session *discordgo.Session, guildId string, withLevel bool) {
