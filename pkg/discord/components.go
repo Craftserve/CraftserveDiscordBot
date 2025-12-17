@@ -107,17 +107,21 @@ func ConstructJoinableGiveawayWinnerComponents(disabled bool) []discordgo.Messag
 	}
 }
 
-func ConstructStatusEditOrCreateModalComponent(data *entities.Status) discordgo.InteractionResponseData {
+func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action string) discordgo.InteractionResponseData {
 
 	var customId string
 	var title string
 
-	if data == nil {
+	switch action {
+	case "create":
 		customId = "status_create"
 		title = "Utwórz nowy szablon statusu"
-	} else {
+	case "edit":
 		title = "Edytuj szablon statusu"
 		customId = "status_edit_" + strconv.Itoa(data.Id)
+	case "set":
+		title = "Ustaw status serwera"
+		customId = "status_set_" + strconv.Itoa(data.Id)
 	}
 
 	var content map[string]string

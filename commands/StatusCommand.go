@@ -115,10 +115,10 @@ func (h StatusCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 			return
 		}
 
-		statusModal := discord.ConstructStatusEditOrCreateModalComponent(status)
+		statusModal := discord.ConstructStatusEditOrCreateModalComponent(status, "edit")
 		discord.RespondWithModal(ctx, s, i, statusModal)
 	case "create":
-		statusModal := discord.ConstructStatusEditOrCreateModalComponent(nil)
+		statusModal := discord.ConstructStatusEditOrCreateModalComponent(nil, "create")
 		discord.RespondWithModal(ctx, s, i, statusModal)
 	case "remove":
 		id := i.ApplicationCommandData().Options[0].Options[0].StringValue()
@@ -162,6 +162,85 @@ func (h StatusCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 			return
 		}
 
+		statusModal := discord.ConstructStatusEditOrCreateModalComponent(status, "set")
+		discord.RespondWithModal(ctx, s, i, statusModal)
+	default:
+		log.Error("Unknown subcommand")
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Nieznana podkomenda.")
+	}
+}
+
+func (h StatusCommand) HandleModalSubmit(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
+
+	action := strings.Split(i.ModalSubmitData().CustomID, "_")
+
+	contentPl := i.ModalSubmitData().Components[2].(*discordgo.Label).Component.(*discordgo.TextInput).Value
+	contentEn := i.ModalSubmitData().Components[3].(*discordgo.Label).Component.(*discordgo.TextInput).Value
+	content := map[string]string{
+		"pl": contentPl,
+		"en": contentEn,
+	}
+
+	shortName := i.ModalSubmitData().Components[0].(*discordgo.Label).Component.(*discordgo.TextInput).Value
+	statusType := i.ModalSubmitData().Components[1].(*discordgo.Label).Component.(*discordgo.SelectMenu).Values[0]
+	contentJson, err := json.Marshal(content)
+	if err != nil {
+		log.WithError(err).Error("Could not marshal status content")
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć zawartości szablonu statusu.")
+		return
+	}
+
+	status := &entities.Status{
+		GuildId:   i.GuildID,
+		ShortName: shortName,
+		Type:      statusType,
+		Content:   contentJson,
+	}
+
+	if action[1] == "create" {
+		err := h.StatusRepo.CreateStatus(ctx, status)
+		if err != nil {
+			log.WithError(err).Error("Could not create status")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można utworzyć szablonu statusu.")
+			return
+		}
+
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Szablon statusu został pomyślnie utworzony.")
+	} else if action[1] == "edit" {
+		id, err := strconv.ParseInt(action[2], 10, 64)
+
+		if err != nil {
+			log.WithError(err).Error("Invalid status ID")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nieprawidłowe ID szablonu statusu.")
+		}
+
+		status.Id = int(id)
+
+		err = h.StatusRepo.UpdateStatus(ctx, status)
+
+		if err != nil {
+			log.WithError(err).Error("Could not update status")
+			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można zaktualizować szablonu statusu.")
+			return
+		}
+
+		discord.RespondWithEphemeralMessage(ctx, s, i, "Szablon statusu został pomyślnie zaktualizowany.")
+
+		var message = fmt.Sprintf("Aktualne formatowanie szablonu:\n\n**Polski**:\n%s\n\n**Angielski**:\n%s", contentPl, contentEn)
+
+		discord.RespondFollowUpEphemeralMessage(ctx, s, i, message)
+	} else if action[1] == "set" {
+		id, err := strconv.ParseInt(action[2], 10, 64)
+
+		status = &entities.Status{
+			Id:        int(id),
+			ShortName: shortName,
+			Type:      statusType,
+			Content:   contentJson,
+			GuildId:   i.GuildID,
+		}
+
 		serverSettings, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 		if err != nil {
 			log.WithError(err).Error("Could not get server settings")
@@ -170,7 +249,7 @@ func (h StatusCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 		}
 
 		var languagesChannels map[string]string
-		err = json.Unmarshal([]byte(serverSettings.StatusChannelsId), &languagesChannels)
+		err = json.Unmarshal(serverSettings.StatusChannelsId, &languagesChannels)
 		if err != nil {
 			log.WithError(err).Error("Could not unmarshal status channels")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć ustawień kanału statusowego.")
@@ -235,75 +314,13 @@ func (h StatusCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 				})
 				if err != nil {
 					log.WithError(err).WithField("channelId", chID).Error("Could not edit channel name")
-					discord.RespondFollowUpMessage(ctx, s, i, fmt.Sprintf("Nie można zaktualizować nazwy kanału <#%s>.", chID))
+					discord.RespondFollowUpEphemeralMessage(ctx, s, i, fmt.Sprintf("Nie można zaktualizować nazwy kanału <#%s>.", chID))
 					return
 				}
 			}(channelId, channelName)
 		}
 
 		discord.RespondWithEphemeralMessage(ctx, s, i, "Kanały statusowe zostały pomyślnie zaktualizowane.")
-	default:
-		log.Error("Unknown subcommand")
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Nieznana podkomenda.")
-	}
-}
-
-func (h StatusCommand) HandleModalSubmit(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	log := logger.GetLoggerFromContext(ctx).WithCommand(h.Name)
-
-	action := strings.Split(i.ModalSubmitData().CustomID, "_")
-
-	contentPl := i.ModalSubmitData().Components[2].(*discordgo.Label).Component.(*discordgo.TextInput).Value
-	contentEn := i.ModalSubmitData().Components[3].(*discordgo.Label).Component.(*discordgo.TextInput).Value
-	content := map[string]string{
-		"pl": contentPl,
-		"en": contentEn,
-	}
-
-	shortName := i.ModalSubmitData().Components[0].(*discordgo.Label).Component.(*discordgo.TextInput).Value
-	statusType := i.ModalSubmitData().Components[1].(*discordgo.Label).Component.(*discordgo.SelectMenu).Values[0]
-	contentJson, err := json.Marshal(content)
-	if err != nil {
-		log.WithError(err).Error("Could not marshal status content")
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć zawartości szablonu statusu.")
-		return
-	}
-
-	status := &entities.Status{
-		GuildId:   i.GuildID,
-		ShortName: shortName,
-		Type:      statusType,
-		Content:   contentJson,
-	}
-
-	if action[1] == "create" {
-		err := h.StatusRepo.CreateStatus(ctx, status)
-		if err != nil {
-			log.WithError(err).Error("Could not create status")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można utworzyć szablonu statusu.")
-			return
-		}
-
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Szablon statusu został pomyślnie utworzony.")
-	} else if action[1] == "edit" {
-		id, err := strconv.ParseInt(action[2], 10, 64)
-
-		if err != nil {
-			log.WithError(err).Error("Invalid status ID")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nieprawidłowe ID szablonu statusu.")
-		}
-
-		status.Id = int(id)
-
-		err = h.StatusRepo.UpdateStatus(ctx, status)
-
-		if err != nil {
-			log.WithError(err).Error("Could not update status")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można zaktualizować szablonu statusu.")
-			return
-		}
-
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Szablon statusu został pomyślnie zaktualizowany.")
 	}
 }
 

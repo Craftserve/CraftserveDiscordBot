@@ -54,10 +54,11 @@ func RespondWithEphemeralMessage(ctx context.Context, s *discordgo.Session, i *d
 	}
 }
 
-func RespondFollowUpMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+func RespondFollowUpEphemeralMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
 	log := logger.GetLoggerFromContext(ctx)
 	_, err := s.FollowupMessageCreate(i.Interaction, false, &discordgo.WebhookParams{
 		Content: message,
+		Flags:   discordgo.MessageFlagsEphemeral,
 	})
 
 	if err != nil {
