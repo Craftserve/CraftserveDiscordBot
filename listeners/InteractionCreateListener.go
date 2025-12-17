@@ -11,6 +11,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -21,6 +23,7 @@ type InteractionCreateListener struct {
 	CsrvbotCommand  commands.CsrvbotCommand
 	DocCommand      commands.DocCommand
 	ResendCommand   commands.ResendCommand
+	StatusCommand   commands.StatusCommand
 	GiveawayHours   string
 	CraftserveUrl   string
 	GiveawaysRepo   entities.GiveawaysRepo
@@ -31,7 +34,7 @@ type InteractionCreateListener struct {
 	//JoinableGiveawayRepo entities.JoinableGiveawayRepo
 }
 
-func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, giveawayHours, craftserveUrl string, giveawaysRepo entities.GiveawaysRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, voucherValue int) InteractionCreateListener {
+func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxCommand commands.ThxCommand, thxmeCommand commands.ThxmeCommand, csrvbotCommand commands.CsrvbotCommand, docCommand commands.DocCommand, resendCommand commands.ResendCommand, statusCommand commands.StatusCommand, giveawayHours, craftserveUrl string, giveawaysRepo entities.GiveawaysRepo, serverRepo entities.ServerRepo, helperService *services.HelperService, voucherValue int) InteractionCreateListener {
 	return InteractionCreateListener{
 		GiveawayCommand: giveawayCommand,
 		ThxCommand:      thxCommand,
@@ -39,6 +42,7 @@ func NewInteractionCreateListener(giveawayCommand commands.GiveawayCommand, thxC
 		CsrvbotCommand:  csrvbotCommand,
 		DocCommand:      docCommand,
 		ResendCommand:   resendCommand,
+		StatusCommand:   statusCommand,
 		GiveawayHours:   giveawayHours,
 		CraftserveUrl:   craftserveUrl,
 		GiveawaysRepo:   giveawaysRepo,
@@ -66,6 +70,8 @@ func (h InteractionCreateListener) Handle(s *discordgo.Session, i *discordgo.Int
 		h.handleApplicationCommandsAutocomplete(ctx, s, i)
 	case discordgo.InteractionMessageComponent:
 		h.handleMessageComponents(ctx, s, i)
+	case discordgo.InteractionModalSubmit:
+		h.handleModalSubmit(ctx, s, i)
 	}
 }
 
@@ -84,6 +90,8 @@ func (h InteractionCreateListener) handleApplicationCommands(ctx context.Context
 		h.DocCommand.Handle(ctx, s, i)
 	case "csrvbot":
 		h.CsrvbotCommand.Handle(ctx, s, i)
+	case "status":
+		h.StatusCommand.Handle(ctx, s, i)
 	case "resend":
 		h.ResendCommand.Handle(ctx, s, i)
 	}
@@ -93,6 +101,15 @@ func (h InteractionCreateListener) handleApplicationCommandsAutocomplete(ctx con
 	switch i.ApplicationCommandData().Name {
 	case "doc":
 		h.DocCommand.HandleAutocomplete(ctx, s, i)
+	case "status":
+		h.StatusCommand.HandleAutocomplete(ctx, s, i)
+	}
+}
+
+func (h InteractionCreateListener) handleModalSubmit(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	switch strings.Split(i.ModalSubmitData().CustomID, "_")[0] {
+	case "status":
+		h.StatusCommand.HandleModalSubmit(ctx, s, i)
 	}
 }
 

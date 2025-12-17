@@ -6,7 +6,6 @@ toolchain go1.21.5
 
 require (
 	github.com/Craftserve/monies v0.0.0-20230628121509-708cba760847
-	github.com/bwmarrin/discordgo v0.28.1
 	github.com/getsentry/sentry-go v0.27.0
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.7.0
@@ -15,6 +14,7 @@ require (
 )
 
 require (
+	github.com/bwmarrin/discordgo v0.29.1-0.20251122142503-22e5cd898d08 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/lib/pq v1.7.1 // indirect
