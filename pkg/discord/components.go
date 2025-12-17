@@ -2,6 +2,7 @@ package discord
 
 import (
 	"csrvbot/domain/entities"
+	"encoding/json"
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
@@ -119,6 +120,16 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status) discordgo.
 		customId = "status_edit_" + strconv.Itoa(data.Id)
 	}
 
+	var content map[string]string
+
+	err := json.Unmarshal(data.Content, &content)
+	if err != nil {
+		content = map[string]string{
+			"pl": "",
+			"en": "",
+		}
+	}
+
 	var currentType string
 	if data != nil {
 		currentType = data.Type
@@ -157,7 +168,7 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status) discordgo.
 					Options: []discordgo.SelectMenuOption{
 						{Label: "Awaria", Value: "OUTAGE", Default: currentType == "OUTAGE"},
 						{Label: "Konserwacja", Value: "MAINTENANCE", Default: currentType == "MAINTENANCE"},
-						{Label: "Brak", Value: "OPERATIONAL", Default: currentType == "OPERATIONAL"},
+						{Label: "Brak Awarii", Value: "OPERATIONAL", Default: currentType == "OPERATIONAL"},
 					},
 				},
 			},
@@ -171,8 +182,7 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status) discordgo.
 					Required:    true,
 					Value: func() string {
 						if data != nil {
-							return ""
-							//return data.Content["pl"]
+							return content["pl"]
 						} else {
 							return ""
 						}
@@ -189,8 +199,7 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status) discordgo.
 					Required:    true,
 					Value: func() string {
 						if data != nil {
-							//return data.Content["en"]
-							return ""
+							return content["en"]
 						} else {
 							return ""
 						}

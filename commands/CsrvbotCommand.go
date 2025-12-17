@@ -7,6 +7,7 @@ import (
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -1112,7 +1113,6 @@ func (h CsrvbotCommand) handleStatusChannelSet(ctx context.Context, s *discordgo
 	language := i.ApplicationCommandData().Options[0].Options[0].Options[0].StringValue()
 	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[1].ChannelValue(s).ID
 	channel, err := s.Channel(channelId)
-
 	if err != nil {
 		log.WithError(err).Error("handleStatusChannelSet s.Channel", err)
 		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
@@ -1160,5 +1160,5 @@ func (h CsrvbotCommand) handleStatusChannelSet(ctx context.Context, s *discordgo
 	}
 
 	log.Infof("%s set status channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
-	discord.RespondWithMessage(ctx, s, i, "Ustawiono kanał z statusem na "+channel.Mention())
+	discord.RespondWithMessage(ctx, s, i, fmt.Sprintf("Ustawiono kanał ze statusem (%s) na %s", language, channel.Mention()))
 }

@@ -228,7 +228,7 @@ func (h StatusCommand) Handle(ctx context.Context, s *discordgo.Session, i *disc
 			channelName := fmt.Sprintf("%s┇status-%s", emoji, lang)
 
 			// Discord have rate limits for editing channels (2 times per 10 minutes),
-			//so we use a goroutine to avoid blocking response from command
+			// so we use a goroutine to avoid blocking response from command
 			go func(chID, chName string) {
 				_, err := s.ChannelEdit(chID, &discordgo.ChannelEdit{
 					Name: chName,
