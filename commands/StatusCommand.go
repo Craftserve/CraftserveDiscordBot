@@ -365,14 +365,14 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 			return
 		}
 
-		err = s.WebhookMessageDelete(i.AppID, i.Interaction.Token, "%40original")
-		if err != nil {
-			log.WithError(err).Error("Could not delete message")
-			return
-		}
-
 		discord.RespondWithEphemeralMessage(ctx, s, i, "Aktualizacja kanałów statusowych została anulowana.")
 		statusCache = nil
+	}
+
+	err := s.WebhookMessageDelete(i.AppID, i.Interaction.Token, "%40original")
+	if err != nil {
+		log.WithError(err).Error("Could not delete message")
+		return
 	}
 }
 
