@@ -112,6 +112,10 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 	var customId string
 	var title string
 
+	if data == nil {
+		data = &entities.Status{}
+	}
+
 	switch action {
 	case "create":
 		customId = "status_create"
@@ -208,6 +212,31 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 							return ""
 						}
 					}(),
+				},
+			},
+		},
+	}
+}
+
+func ConstructStatusAcceptRejectComponents() []discordgo.MessageComponent {
+	return []discordgo.MessageComponent{
+		&discordgo.ActionsRow{
+			Components: []discordgo.MessageComponent{
+				&discordgo.Button{
+					Label:    "",
+					Style:    discordgo.SuccessButton,
+					CustomID: "status_accept",
+					Emoji: &discordgo.ComponentEmoji{
+						Name: "✅",
+					},
+				},
+				&discordgo.Button{
+					Label:    "",
+					Style:    discordgo.DangerButton,
+					CustomID: "status_reject",
+					Emoji: &discordgo.ComponentEmoji{
+						Name: "⛔",
+					},
 				},
 			},
 		},

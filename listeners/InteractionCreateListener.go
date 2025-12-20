@@ -292,6 +292,8 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			log.WithError(err).Errorf("handleMessageComponents#session.InteractionRespond: %v", err)
 			return
 		}
+	case "status_accept", "status_reject":
+		h.StatusCommand.HandleMessageComponents(ctx, s, i)
 	}
 }
 
