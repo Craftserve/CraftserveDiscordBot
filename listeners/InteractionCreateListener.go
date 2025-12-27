@@ -116,6 +116,13 @@ func (h InteractionCreateListener) handleModalSubmit(ctx context.Context, s *dis
 func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log := logger.GetLoggerFromContext(ctx)
 
+	splittedCustomID := strings.Split(i.MessageComponentData().CustomID, "_")
+
+	var statusId string
+	if len(splittedCustomID) == 3 && splittedCustomID[0] == "status" {
+		statusId = splittedCustomID[2]
+	}
+
 	switch i.MessageComponentData().CustomID {
 	case "thxwinnercode":
 		log.Debug("User clicked thxwinnercode button")
@@ -292,7 +299,7 @@ func (h InteractionCreateListener) handleMessageComponents(ctx context.Context, 
 			log.WithError(err).Errorf("handleMessageComponents#session.InteractionRespond: %v", err)
 			return
 		}
-	case "status_accept", "status_reject":
+	case fmt.Sprintf("status_accept_%s", statusId), fmt.Sprintf("status_reject_%s", statusId):
 		h.StatusCommand.HandleMessageComponents(ctx, s, i)
 	}
 }

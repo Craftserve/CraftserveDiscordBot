@@ -21,7 +21,7 @@ type StatusCommand struct {
 	StatusRepo   entities.StatusRepo
 }
 
-var statusCache *entities.Status
+var statusCache = make(map[string]*entities.Status)
 
 func NewStatusCommand(serverRepo entities.ServerRepo, statusRepo entities.StatusRepo) StatusCommand {
 	return StatusCommand{
@@ -243,10 +243,10 @@ func (h StatusCommand) HandleModalSubmit(ctx context.Context, s *discordgo.Sessi
 			GuildId:   i.GuildID,
 		}
 
-		statusCache = status
+		statusCache[i.ID] = status
 
 		var message = fmt.Sprintf("Aktualne formatowanie szablonu:\n\n**Polski**:\n%s\n\n**Angielski**:\n%s", contentPl, contentEn)
-		var components = discord.ConstructStatusAcceptRejectComponents()
+		var components = discord.ConstructStatusAcceptRejectComponents(i.ID)
 
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -270,7 +270,8 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 	action := strings.Split(i.MessageComponentData().CustomID, "_")
 
 	if action[1] == "accept" {
-		if statusCache == nil {
+		interactionID := action[2]
+		if statusCache[interactionID] == nil {
 			log.Error("No status in cache")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można znaleźć szablonu statusu w pamięci.")
 			return
@@ -292,7 +293,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 		}
 
 		var languagesContent map[string]string
-		err = json.Unmarshal(statusCache.Content, &languagesContent)
+		err = json.Unmarshal(statusCache[interactionID].Content, &languagesContent)
 		if err != nil {
 			log.WithError(err).Error("Could not unmarshal status content")
 			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć zawartości szablonu statusu.")
@@ -330,7 +331,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 
 			var emoji string
 
-			switch statusCache.Type {
+			switch statusCache[interactionID].Type {
 			case "OUTAGE":
 				emoji = "🔴"
 			case "MAINTENANCE":
@@ -355,8 +356,10 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 			}(channelId, channelName)
 		}
 
+		delete(statusCache, interactionID)
 		discord.RespondWithEphemeralMessage(ctx, s, i, "Kanały statusowe zostały pomyślnie zaktualizowane.")
 	} else if action[1] == "reject" {
+		interactionID := action[2]
 		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredMessageUpdate,
 		})
@@ -366,7 +369,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 		}
 
 		discord.RespondWithEphemeralMessage(ctx, s, i, "Aktualizacja kanałów statusowych została anulowana.")
-		statusCache = nil
+		delete(statusCache, interactionID)
 	}
 
 	err := s.WebhookMessageDelete(i.AppID, i.Interaction.Token, "%40original")

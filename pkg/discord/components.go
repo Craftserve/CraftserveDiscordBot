@@ -218,14 +218,14 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 	}
 }
 
-func ConstructStatusAcceptRejectComponents() []discordgo.MessageComponent {
+func ConstructStatusAcceptRejectComponents(interactionID string) []discordgo.MessageComponent {
 	return []discordgo.MessageComponent{
 		&discordgo.ActionsRow{
 			Components: []discordgo.MessageComponent{
 				&discordgo.Button{
 					Label:    "",
 					Style:    discordgo.SuccessButton,
-					CustomID: "status_accept",
+					CustomID: "status_accept_" + interactionID,
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "✅",
 					},
@@ -233,7 +233,7 @@ func ConstructStatusAcceptRejectComponents() []discordgo.MessageComponent {
 				&discordgo.Button{
 					Label:    "",
 					Style:    discordgo.DangerButton,
-					CustomID: "status_reject",
+					CustomID: "status_reject_" + interactionID,
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "⛔",
 					},
