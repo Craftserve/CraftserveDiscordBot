@@ -9,6 +9,7 @@ type ServerConfig struct {
 	Id                           int             `json:"id"`
 	GuildId                      string          `json:"guildId"`
 	AdminRoleId                  string          `json:"adminRoleId"`
+	StatusChannelsId             json.RawMessage `json:"statusChannelsId"`
 	MainChannel                  string          `json:"mainChannel"`
 	ThxInfoChannel               string          `json:"thxInfoChannel"`
 	HelperRoleId                 string          `json:"helperRoleId"`

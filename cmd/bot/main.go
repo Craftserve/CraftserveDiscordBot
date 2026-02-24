@@ -10,13 +10,14 @@ import (
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"encoding/json"
-	"github.com/bwmarrin/discordgo"
-	"github.com/getsentry/sentry-go"
-	"github.com/robfig/cron"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/getsentry/sentry-go"
+	"github.com/robfig/cron"
 )
 
 type Config struct {
@@ -103,6 +104,7 @@ func main() {
 	var serverRepo = repos.NewServerRepo(dbMap)
 	var userRepo = repos.NewUserRepo(dbMap)
 	var giveawaysRepo = repos.NewGiveawaysRepo(dbMap)
+	var statusRepo = repos.NewStatusRepo(dbMap)
 
 	log.Debug("Creating tables...")
 	err = db.CreateTablesIfNotExists()
@@ -131,7 +133,8 @@ func main() {
 	var csrvbotCommand = commands.NewCsrvbotCommand(BotConfig.CraftserveUrl, BotConfig.ThxGiveawayTimeString, BotConfig.VoucherConfig.ValuePLN, serverRepo, giveawaysRepo, userRepo, csrvClient, giveawayService, helperService)
 	var docCommand = commands.NewDocCommand(githubClient)
 	var resendCommand = commands.NewResendCommand(giveawaysRepo, BotConfig.CraftserveUrl)
-	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService, BotConfig.VoucherConfig.ValuePLN)
+	var statusCommand = commands.NewStatusCommand(serverRepo, statusRepo)
+	var interactionCreateListener = listeners.NewInteractionCreateListener(giveawayCommand, thxCommand, thxmeCommand, csrvbotCommand, docCommand, resendCommand, statusCommand, BotConfig.ThxGiveawayTimeString, BotConfig.CraftserveUrl, giveawaysRepo, serverRepo, helperService, BotConfig.VoucherConfig.ValuePLN)
 	var guildCreateListener = listeners.NewGuildCreateListener(serverRepo, giveawayService, helperService, savedRoleService)
 	var guildMemberAddListener = listeners.NewGuildMemberAddListener(userRepo)
 	var guildMemberUpdateListener = listeners.NewGuildMemberUpdateListener(userRepo, savedRoleService)
@@ -158,6 +161,7 @@ func main() {
 		csrvbotCommand.Register(ctx, session)
 		docCommand.Register(ctx, session)
 		resendCommand.Register(ctx, session)
+		statusCommand.Register(ctx, session)
 	} else {
 		log.Debug("Skipping command registration")
 	}

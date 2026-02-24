@@ -7,10 +7,12 @@ import (
 	"csrvbot/pkg/discord"
 	"csrvbot/pkg/logger"
 	"encoding/json"
-	"github.com/bwmarrin/discordgo"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 type CsrvbotCommand struct {
@@ -52,6 +54,7 @@ const (
 	ConditionalGiveawayChannelSubcommand   = "conditionalgiveawaychannel"
 	ConditionalWinnerCountSubcommand       = "conditionalwinnercount"
 	ConditionalGiveawayLevelsSubcommand    = "conditionalgiveawaylevels"
+	StatusChannelSubcommand                = "statuschannel"
 )
 
 func NewCsrvbotCommand(craftserveUrl, giveawayHours string, voucherValue int, serverRepo entities.ServerRepo, giveawaysRepo entities.GiveawaysRepo, userRepo entities.UserRepo, csrvClient *services.CsrvClient, giveawayService *services.GiveawayService, helperService *services.HelperService) CsrvbotCommand {
@@ -245,6 +248,35 @@ func (h CsrvbotCommand) Register(ctx context.Context, s *discordgo.Session) {
 							},
 						},
 					},
+					{
+						Name:        StatusChannelSubcommand,
+						Description: "Kanał na którym bot będzie wysyłał status serwera",
+						Type:        discordgo.ApplicationCommandOptionSubCommand,
+						Options: []*discordgo.ApplicationCommandOption{
+							{
+								Type:        discordgo.ApplicationCommandOptionString,
+								Name:        "language",
+								Description: "Język statusów na wybranym kanale",
+								Required:    true,
+								Choices: []*discordgo.ApplicationCommandOptionChoice{
+									{
+										Name:  "Polski",
+										Value: "pl",
+									},
+									{
+										Name:  "English",
+										Value: "en",
+									},
+								},
+							},
+							{
+								Type:        discordgo.ApplicationCommandOptionChannel,
+								Name:        "channel",
+								Description: "Kanał na którym bot będzie wysyłał status serwera",
+								Required:    true,
+							},
+						},
+					},
 				},
 				Type: discordgo.ApplicationCommandOptionSubCommandGroup,
 			},
@@ -414,6 +446,8 @@ func (h CsrvbotCommand) handleSettings(ctx context.Context, s *discordgo.Session
 		h.handleConditionalWinnersCountSet(ctx, s, i)
 	case ConditionalGiveawayLevelsSubcommand:
 		h.handleConditionalGiveawayLevelsSet(ctx, s, i)
+	case StatusChannelSubcommand:
+		h.handleStatusChannelSet(ctx, s, i)
 	}
 }
 
@@ -1071,4 +1105,60 @@ func (h CsrvbotCommand) handleConditionalGiveawayLevelsSet(ctx context.Context, 
 		return
 	}
 	h.GiveawayService.CreateJoinableGiveaway(ctx, s, guild, true)
+}
+
+func (h CsrvbotCommand) handleStatusChannelSet(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
+	log.Debug("Got command")
+	language := i.ApplicationCommandData().Options[0].Options[0].Options[0].StringValue()
+	channelId := i.ApplicationCommandData().Options[0].Options[0].Options[1].ChannelValue(s).ID
+	channel, err := s.Channel(channelId)
+	if err != nil {
+		log.WithError(err).Error("handleStatusChannelSet s.Channel", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+		return
+	}
+
+	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
+	if err != nil {
+		log.WithError(err).Error("handleStatusChannelSet h.ServerRepo.GetServerConfigForGuild", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+		return
+	}
+
+	var statusChannels map[string]string
+
+	err = json.Unmarshal(serverConfig.StatusChannelsId, &statusChannels)
+	if err != nil {
+		log.WithError(err).Error("handleStatusChannelSet json.Unmarshal", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+		return
+	}
+
+	if statusChannels[language] == channelId {
+		log.Debug("Status channel is the same as current")
+		discord.RespondWithMessage(ctx, s, i, "Kanał z statusem jest już ustawiony na "+channel.Mention())
+		return
+	}
+
+	statusChannels[language] = channelId
+
+	statusChannelsJson, err := json.Marshal(statusChannels)
+	if err != nil {
+		log.WithError(err).Error("handleStatusChannelSet json.Marshal", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+		return
+	}
+
+	serverConfig.StatusChannelsId = statusChannelsJson
+	log.Debug("Updating server config with new status channel")
+	err = h.ServerRepo.UpdateServerConfig(ctx, &serverConfig)
+	if err != nil {
+		log.WithError(err).Error("handleStatusChannelSet h.ServerRepo.UpdateServerConfig", err)
+		discord.RespondWithMessage(ctx, s, i, "Nie udało się ustawić kanału")
+		return
+	}
+
+	log.Infof("%s set status channel to %s (%s)", i.Member.User.Username, channel.Name, channel.ID)
+	discord.RespondWithMessage(ctx, s, i, fmt.Sprintf("Ustawiono kanał ze statusem (%s) na %s", language, channel.Mention()))
 }

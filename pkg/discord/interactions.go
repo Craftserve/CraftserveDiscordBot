@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"csrvbot/pkg/logger"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -50,5 +51,28 @@ func RespondWithEphemeralMessage(ctx context.Context, s *discordgo.Session, i *d
 	})
 	if err != nil {
 		log.WithError(err).Error("Could not respond to interaction")
+	}
+}
+
+func RespondFollowUpEphemeralMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	log := logger.GetLoggerFromContext(ctx)
+	_, err := s.FollowupMessageCreate(i.Interaction, false, &discordgo.WebhookParams{
+		Content: message,
+		Flags:   discordgo.MessageFlagsEphemeral,
+	})
+
+	if err != nil {
+		log.WithError(err).Error("Could not create follow-up message")
+	}
+}
+
+func RespondWithModal(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, modal discordgo.InteractionResponseData) {
+	log := logger.GetLoggerFromContext(ctx)
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &modal,
+	})
+	if err != nil {
+		log.WithError(err).Error("Could not respond to interaction with modal")
 	}
 }

@@ -6,7 +6,7 @@ toolchain go1.21.5
 
 require (
 	github.com/Craftserve/monies v0.0.0-20230628121509-708cba760847
-	github.com/bwmarrin/discordgo v0.28.1
+	github.com/bwmarrin/discordgo v0.29.1-0.20260214123928-f43dd94faaac
 	github.com/getsentry/sentry-go v0.27.0
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.7.0

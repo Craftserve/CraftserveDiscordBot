@@ -4,6 +4,7 @@ import (
 	"context"
 	"csrvbot/domain/entities"
 	"encoding/json"
+
 	"github.com/go-gorp/gorp"
 )
 
@@ -21,6 +22,7 @@ type SqlServerConfig struct {
 	Id                           int             `db:"id,primarykey,autoincrement"`
 	GuildId                      string          `db:"guild_id,size:255"`
 	AdminRoleId                  string          `db:"admin_role_id,size:255"`
+	StatusChannel                json.RawMessage `db:"status_channel,size:255"`
 	MainChannel                  string          `db:"main_channel,size:255"`
 	ThxInfoChannel               string          `db:"thx_info_channel,size:255"`
 	HelperRoleId                 string          `db:"helper_role_id,size:255"`
@@ -39,6 +41,7 @@ func FromSqlServerConfig(serverConfig *SqlServerConfig) *entities.ServerConfig {
 		GuildId:                      serverConfig.GuildId,
 		AdminRoleId:                  serverConfig.AdminRoleId,
 		MainChannel:                  serverConfig.MainChannel,
+		StatusChannelsId:             serverConfig.StatusChannel,
 		ThxInfoChannel:               serverConfig.ThxInfoChannel,
 		HelperRoleId:                 serverConfig.HelperRoleId,
 		HelperRoleThxesNeeded:        serverConfig.HelperRoleThxesNeeded,
@@ -57,6 +60,7 @@ func ToSqlServerConfig(serverConfig *entities.ServerConfig) *SqlServerConfig {
 		GuildId:                      serverConfig.GuildId,
 		AdminRoleId:                  serverConfig.AdminRoleId,
 		MainChannel:                  serverConfig.MainChannel,
+		StatusChannel:                serverConfig.StatusChannelsId,
 		ThxInfoChannel:               serverConfig.ThxInfoChannel,
 		HelperRoleId:                 serverConfig.HelperRoleId,
 		HelperRoleThxesNeeded:        serverConfig.HelperRoleThxesNeeded,
@@ -71,7 +75,7 @@ func ToSqlServerConfig(serverConfig *entities.ServerConfig) *SqlServerConfig {
 
 func (repo *ServerRepo) GetServerConfigForGuild(ctx context.Context, guildId string) (entities.ServerConfig, error) {
 	var serverConfig SqlServerConfig
-	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed, message_giveaway_winners, unconditional_giveaway_channel, unconditional_giveaway_winners, conditional_giveaway_channel, conditional_giveaway_winners, conditional_giveaway_levels FROM server_configs WHERE guild_id = ?", guildId)
+	err := repo.mysql.WithContext(ctx).SelectOne(&serverConfig, "SELECT id, guild_id, admin_role_id, main_channel, status_channel, thx_info_channel, helper_role_id, helper_role_thxes_needed, message_giveaway_winners, unconditional_giveaway_channel, unconditional_giveaway_winners, conditional_giveaway_channel, conditional_giveaway_winners, conditional_giveaway_levels FROM server_configs WHERE guild_id = ?", guildId)
 	if err != nil {
 		return entities.ServerConfig{}, err
 	}
