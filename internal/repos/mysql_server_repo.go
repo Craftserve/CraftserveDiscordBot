@@ -22,7 +22,7 @@ type SqlServerConfig struct {
 	Id                           int             `db:"id,primarykey,autoincrement"`
 	GuildId                      string          `db:"guild_id,size:255"`
 	AdminRoleId                  string          `db:"admin_role_id,size:255"`
-	StatusChannel                json.RawMessage `db:"status_channel,size:255"`
+	StatusChannel                json.RawMessage `db:"status_channel,size:255,default:'{}'"`
 	MainChannel                  string          `db:"main_channel,size:255"`
 	ThxInfoChannel               string          `db:"thx_info_channel,size:255"`
 	HelperRoleId                 string          `db:"helper_role_id,size:255"`
