@@ -7,10 +7,11 @@ import (
 	"csrvbot/pkg/logger"
 	"database/sql"
 	"errors"
-	"github.com/bwmarrin/discordgo"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 type GiveawayService struct {
@@ -234,17 +235,25 @@ func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *di
 		return
 	}
 
-	log.Debug("Inserting message giveaway into database")
-	err = h.GiveawaysRepo.InsertGiveaway(ctx, guildId, nil, entities.MessageGiveawayType, nil)
-	if err != nil {
-		log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.InsertMessageGiveaway")
+	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, guildId, entities.MessageGiveawayType)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.GetMessageGiveaway")
 		return
 	}
 
-	giveaway, err := h.GiveawaysRepo.GetGiveawayForGuild(ctx, guildId, entities.MessageGiveawayType)
-	if err != nil {
-		log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.GetMessageGiveaway")
-		return
+	if errors.Is(err, sql.ErrNoRows) {
+		log.Debug("Inserting message giveaway into database")
+		err = h.GiveawaysRepo.InsertGiveaway(ctx, guildId, nil, entities.MessageGiveawayType, nil)
+		if err != nil {
+			log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.InsertMessageGiveaway")
+			return
+		}
+
+		giveaway, err = h.GiveawaysRepo.GetGiveawayForGuild(ctx, guildId, entities.MessageGiveawayType)
+		if err != nil {
+			log.WithError(err).Error("FinishMessageGiveaway#GiveawaysRepo.GetMessageGiveaway")
+			return
+		}
 	}
 
 	winnerIds := make([]string, serverConfig.MessageGiveawayWinners)

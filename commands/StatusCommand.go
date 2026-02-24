@@ -271,16 +271,19 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 
 	if action[1] == "accept" {
 		interactionID := action[2]
+
+		discord.DeferMessageUpdate(ctx, s, i)
+
 		if statusCache[interactionID] == nil {
 			log.Error("No status in cache")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można znaleźć szablonu statusu w pamięci.")
+			discord.EditResponseMessage(ctx, s, i, "Nie można znaleźć szablonu statusu w pamięci.")
 			return
 		}
 
 		serverSettings, err := h.ServerRepo.GetServerConfigForGuild(ctx, i.GuildID)
 		if err != nil {
 			log.WithError(err).Error("Could not get server settings")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można pobrać ustawień serwera.")
+			discord.EditResponseMessage(ctx, s, i, "Nie można pobrać ustawień serwera.")
 			return
 		}
 
@@ -288,7 +291,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 		err = json.Unmarshal(serverSettings.StatusChannelsId, &languagesChannels)
 		if err != nil {
 			log.WithError(err).Error("Could not unmarshal status channels")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć ustawień kanału statusowego.")
+			discord.EditResponseMessage(ctx, s, i, "Nie można przetworzyć ustawień kanału statusowego.")
 			return
 		}
 
@@ -296,7 +299,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 		err = json.Unmarshal(statusCache[interactionID].Content, &languagesContent)
 		if err != nil {
 			log.WithError(err).Error("Could not unmarshal status content")
-			discord.RespondWithEphemeralMessage(ctx, s, i, "Nie można przetworzyć zawartości szablonu statusu.")
+			discord.EditResponseMessage(ctx, s, i, "Nie można przetworzyć zawartości szablonu statusu.")
 			return
 		}
 
@@ -309,7 +312,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 			messages, err := s.ChannelMessages(channelId, 10, "", "", "")
 			if err != nil {
 				log.WithError(err).WithField("channelId", channelId).Error("Could not fetch messages from channel")
-				discord.RespondWithEphemeralMessage(ctx, s, i, fmt.Sprintf("Nie można pobrać wiadomości z kanału o ID %s.", channelId))
+				discord.EditResponseMessage(ctx, s, i, fmt.Sprintf("Nie można pobrać wiadomości z kanału o ID %s.", channelId))
 				return
 			}
 
@@ -317,7 +320,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 				err := s.ChannelMessageDelete(channelId, message.ID)
 				if err != nil {
 					log.WithError(err).WithField("channelId", channelId).WithField("messageId", message.ID).Error("Could not delete message from channel")
-					discord.RespondWithEphemeralMessage(ctx, s, i, fmt.Sprintf("Nie można usunąć wiadomości z kanału o ID %s.", channelId))
+					discord.EditResponseMessage(ctx, s, i, fmt.Sprintf("Nie można usunąć wiadomości z kanału o ID %s.", channelId))
 					return
 				}
 			}
@@ -325,7 +328,7 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 			_, err = s.ChannelMessageSend(channelId, content)
 			if err != nil {
 				log.WithError(err).WithField("channelId", channelId).Error("Could not send status message to channel")
-				discord.RespondWithEphemeralMessage(ctx, s, i, fmt.Sprintf("Nie można wysłać wiadomości statusowej na kanał o ID %s.", channelId))
+				discord.EditResponseMessage(ctx, s, i, fmt.Sprintf("Nie można wysłać wiadomości statusowej na kanał o ID %s.", channelId))
 				return
 			}
 
@@ -357,25 +360,17 @@ func (h StatusCommand) HandleMessageComponents(ctx context.Context, s *discordgo
 		}
 
 		delete(statusCache, interactionID)
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Kanały statusowe zostały pomyślnie zaktualizowane.")
+
+		discord.RespondFollowUpEphemeralMessage(ctx, s, i, "Kanały statusowe zostały pomyślnie zaktualizowane.")
+
+		discord.DeleteResponseMessage(ctx, s, i)
 	} else if action[1] == "reject" {
-		interactionID := action[2]
-		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredMessageUpdate,
-		})
-		if err != nil {
-			log.WithError(err).Error("Could not respond to interaction")
-			return
-		}
+		discord.DeferMessageUpdate(ctx, s, i)
 
-		discord.RespondWithEphemeralMessage(ctx, s, i, "Aktualizacja kanałów statusowych została anulowana.")
-		delete(statusCache, interactionID)
-	}
+		delete(statusCache, action[2])
+		discord.RespondFollowUpEphemeralMessage(ctx, s, i, "Aktualizacja kanałów statusowych została anulowana.")
 
-	err := s.WebhookMessageDelete(i.AppID, i.Interaction.Token, "%40original")
-	if err != nil {
-		log.WithError(err).Error("Could not delete message")
-		return
+		discord.DeleteResponseMessage(ctx, s, i)
 	}
 }
 
