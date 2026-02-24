@@ -157,7 +157,6 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 					Style:       discordgo.TextInputShort,
 					CustomID:    "short_name",
 					Placeholder: "Wpisz nazwę szablonu tutaj...",
-					Required:    true,
 					Value: func() string {
 						if data != nil {
 							return data.ShortName
@@ -187,7 +186,6 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 					Style:       discordgo.TextInputParagraph,
 					CustomID:    "content_pl",
 					Placeholder: "Wpisz treść statusu tutaj...",
-					Required:    true,
 					Value: func() string {
 						if data != nil {
 							return content["pl"]
@@ -204,7 +202,6 @@ func ConstructStatusEditOrCreateModalComponent(data *entities.Status, action str
 					Style:       discordgo.TextInputParagraph,
 					CustomID:    "content_en",
 					Placeholder: "Wpisz treść statusu tutaj...",
-					Required:    true,
 					Value: func() string {
 						if data != nil {
 							return content["en"]
