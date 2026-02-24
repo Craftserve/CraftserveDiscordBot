@@ -17,6 +17,25 @@ func RespondLoading(ctx context.Context, s *discordgo.Session, i *discordgo.Inte
 	}
 }
 
+func DeleteResponseMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
+
+	err := s.WebhookMessageDelete(i.AppID, i.Interaction.Token, i.Message.ID)
+	if err != nil {
+		log.WithError(err).Error("Could not delete message")
+	}
+}
+
+func DeferMessageUpdate(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log := logger.GetLoggerFromContext(ctx)
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredMessageUpdate,
+	})
+	if err != nil {
+		log.WithError(err).Error("Could not defer message update")
+	}
+}
+
 func EditResponseMessage(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
 	log := logger.GetLoggerFromContext(ctx)
 	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
