@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/go-gorp/gorp"
 	_ "github.com/go-sql-driver/mysql"
+	"time"
 )
 
 type Provider struct {
@@ -41,6 +42,9 @@ func (p *Provider) InitMySQLDatabases(ctx context.Context, databases []MySQLConf
 		if err != nil {
 			return fmt.Errorf("could not open database %s %w", database.Name, err)
 		}
+
+		connection.SetConnMaxLifetime(3 * time.Minute)
+		connection.SetConnMaxIdleTime(time.Minute)
 
 		if err := connection.Ping(); err != nil {
 			return fmt.Errorf("could not ping database %s %w", database.Name, err)

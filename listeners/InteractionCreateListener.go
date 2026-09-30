@@ -567,7 +567,7 @@ func (h InteractionCreateListener) handleAcceptDeclineButtons(ctx context.Contex
 
 			thxNotification, err := h.GiveawaysRepo.GetThxNotification(ctx, i.Message.ID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				log.WithError(err).Error("Could not get thx notification for message %s", i.Message.ID)
+				log.WithError(err).Errorf("Could not get thx notification for message %s", i.Message.ID)
 				return
 			}
 

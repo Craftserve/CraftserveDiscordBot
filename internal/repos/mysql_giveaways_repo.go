@@ -254,7 +254,7 @@ func NewGiveawaysRepo(mysql *gorp.DbMap) *GiveawaysRepo {
 
 func (repo GiveawaysRepo) GetGiveawayForGuild(ctx context.Context, guildId, giveawayType string) (*entities.Giveaway, error) {
 	var giveaway SqlGiveaways
-	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, type, start_time, end_time, guild_id, info_message_id, level FROM giveaways WHERE end_time IS NULL AND guild_id = ? AND type = ?", guildId, giveawayType)
+	err := repo.mysql.WithContext(ctx).SelectOne(&giveaway, "SELECT id, type, start_time, end_time, guild_id, info_message_id, level FROM giveaways WHERE end_time IS NULL AND guild_id = ? AND type = ? ORDER BY id DESC LIMIT 1", guildId, giveawayType)
 	if err != nil {
 		return nil, err
 	}

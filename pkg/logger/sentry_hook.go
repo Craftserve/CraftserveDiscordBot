@@ -27,7 +27,14 @@ func (h *SentryHook) Fire(entry *logrus.Entry) error {
 	localScope.SetLevel(sentryLevel)
 
 	if sentryLevel == sentry.LevelFatal || sentryLevel == sentry.LevelError {
-		localScope.SetExtra("fields", entry.Data)
+		fields := make(sentry.Context, len(entry.Data))
+		for k, v := range entry.Data {
+			if err, ok := v.(error); ok {
+				v = err.Error()
+			}
+			fields[k] = v
+		}
+		localScope.SetContext("fields", fields)
 		localHub.CaptureMessage(entry.Message)
 	} else {
 		hints := sentry.BreadcrumbHint(entry.Data)

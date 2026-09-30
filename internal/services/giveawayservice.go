@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -19,6 +20,8 @@ type GiveawayService struct {
 	CraftserveUrl string
 	ServerRepo    entities.ServerRepo
 	GiveawaysRepo entities.GiveawaysRepo
+
+	messageGiveawayMu *sync.Mutex
 }
 
 func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo entities.ServerRepo, giveawaysRepo entities.GiveawaysRepo) *GiveawayService {
@@ -27,6 +30,8 @@ func NewGiveawayService(csrvClient *CsrvClient, craftserveUrl string, serverRepo
 		CraftserveUrl: craftserveUrl,
 		ServerRepo:    serverRepo,
 		GiveawaysRepo: giveawaysRepo,
+
+		messageGiveawayMu: &sync.Mutex{},
 	}
 }
 
@@ -202,6 +207,9 @@ func (h *GiveawayService) FinishMessageGiveaways(ctx context.Context, session *d
 }
 
 func (h *GiveawayService) FinishMessageGiveaway(ctx context.Context, session *discordgo.Session, guildId string) {
+	h.messageGiveawayMu.Lock()
+	defer h.messageGiveawayMu.Unlock()
+
 	log := logger.GetLoggerFromContext(ctx).WithGuild(guildId)
 	log.Debug("Finishing message giveaway for guild")
 	serverConfig, err := h.ServerRepo.GetServerConfigForGuild(ctx, guildId)
